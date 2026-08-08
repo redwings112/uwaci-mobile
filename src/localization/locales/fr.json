@@ -1,0 +1,35 @@
+{
+  "common": {
+    "appName": "Uwaci",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "send": "Envoyer",
+    "experimental": "Expérimental"
+  },
+  "home": {
+    "eyebrow": "VOTRE VOIX, COMPRISE",
+    "title": "Comment Uwaci peut vous aider ?",
+    "subtitle": "Posez votre question naturellement, à l’oral ou à l’écrit.",
+    "holdToSpeak": "Appuyer pour parler",
+    "typeInstead": "Ou écrivez votre question",
+    "statusReady": "Prêt quand vous l’êtes"
+  },
+  "conversation": {
+    "title": "Conversation",
+    "placeholder": "Posez une autre question…",
+    "new": "Nouvelle conversation",
+    "transcription": "Uwaci a entendu",
+    "speak": "Écouter cette réponse",
+    "feedback": "Cette réponse vous a-t-elle aidé ?",
+    "thinking": "Uwaci réfléchit…"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue de conversation préférée",
+    "voiceResponse": "Lire les réponses à voix haute",
+    "about": "Uwaci utilise son service sécurisé pour le traitement IA."
+  },
+  "errors": {
+    "offline": "Vous semblez hors ligne. Vérifiez votre connexion puis réessayez."
+  }
+}

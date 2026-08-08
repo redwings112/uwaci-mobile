@@ -1,0 +1,1 @@
+npm run validate:branch && npm run typecheck && npm test

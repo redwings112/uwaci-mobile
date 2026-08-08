@@ -1,0 +1,37 @@
+module.exports = {
+  preset: 'jest-expo',
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  testMatch: ['<rootDir>/**/*.test.{ts,tsx}'],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|nativewind|react-native-css-interop|@reduxjs/toolkit|immer))',
+    '/node_modules/react-native-reanimated/plugin/',
+    '/node_modules/@react-native/babel-preset/',
+  ],
+  collectCoverageFrom: [
+    'src/core/auth/authSession.ts',
+    'src/core/constants/languages.ts',
+    'src/core/errors/**/*.{ts,tsx}',
+    'src/features/authentication/state/authSlice.ts',
+    'src/features/conversation/components/MessageBubble.tsx',
+    'src/features/conversation/state/conversationSlice.ts',
+    'src/features/feedback/components/FeedbackSheet.tsx',
+    'src/features/language/components/LanguageSelector.tsx',
+    'src/features/language/state/languageSlice.ts',
+    'src/features/settings/state/settingsSlice.ts',
+    'src/features/text_input/utils/textQuerySchema.ts',
+    'src/features/voice/components/MicrophoneButton.tsx',
+    'src/features/voice/components/RecordingTimer.tsx',
+    'src/features/voice/state/voiceSlice.ts',
+    'src/shared/components/Button/Button.tsx',
+    'src/shared/components/ErrorState/ErrorState.tsx',
+    'src/shared/components/Typography/Typography.tsx',
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 60,
+      functions: 70,
+      lines: 75,
+      statements: 75,
+    },
+  },
+};

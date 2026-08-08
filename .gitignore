@@ -1,0 +1,46 @@
+# dependencies and Expo state
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+coverage/
+
+# public-variable local environments
+.env
+.env.*
+!.env.example
+
+# native generated output
+android/
+ios/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+credentials.json
+google-services.json
+GoogleService-Info.plist
+
+# local EAS output and temporary recordings
+.eas/
+*.aab
+*.apk
+*.ipa
+tmp/audio/
+*.m4a
+*.caf
+*.wav
+
+# logs, editors, and operating systems
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

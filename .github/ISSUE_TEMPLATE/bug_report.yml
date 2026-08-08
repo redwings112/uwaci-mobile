@@ -1,0 +1,29 @@
+name: Bug report
+description: Report reproducible broken behavior in the mobile app.
+title: 'fix: '
+labels: [bug]
+body:
+  - type: textarea
+    id: behavior
+    attributes: { label: What happened?, description: Include expected and actual behavior. }
+    validations: { required: true }
+  - type: textarea
+    id: reproduce
+    attributes: { label: Reproduction steps }
+    validations: { required: true }
+  - type: input
+    id: environment
+    attributes: { label: Device and build, placeholder: 'Pixel 8, Android 16, preview build 42' }
+    validations: { required: true }
+  - type: textarea
+    id: accessibility
+    attributes: { label: Accessibility impact }
+  - type: textarea
+    id: evidence
+    attributes:
+      {
+        label: Logs or visual evidence,
+        description: Remove tokens,
+        conversations,
+        and private audio.,
+      }

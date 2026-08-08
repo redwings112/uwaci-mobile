@@ -1,0 +1,35 @@
+{
+  "common": {
+    "appName": "Uwaci",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "send": "Send",
+    "experimental": "Experimental"
+  },
+  "home": {
+    "eyebrow": "YOUR VOICE, UNDERSTOOD",
+    "title": "What can Uwaci help you with?",
+    "subtitle": "Ask naturally by voice or text. You can mix languages.",
+    "holdToSpeak": "Tap to speak",
+    "typeInstead": "Or type your question",
+    "statusReady": "Ready when you are"
+  },
+  "conversation": {
+    "title": "Conversation",
+    "placeholder": "Ask a follow-up…",
+    "new": "New conversation",
+    "transcription": "Uwaci heard",
+    "speak": "Hear this answer",
+    "feedback": "Was this helpful?",
+    "thinking": "Uwaci is thinking…"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Preferred conversation language",
+    "voiceResponse": "Read answers aloud",
+    "about": "Uwaci uses its secure backend for AI processing."
+  },
+  "errors": {
+    "offline": "You appear to be offline. Check your connection and try again."
+  }
+}

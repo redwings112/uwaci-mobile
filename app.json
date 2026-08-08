@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Uwaci",
+    "slug": "uwaci-mobile",
+    "scheme": "uwaci",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F8F3"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Uwaci to use your microphone when you ask a voice question."
+        }
+      ],
+      "expo-localization",
+      "expo-secure-store"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.uwaci.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Uwaci records audio only when you choose to ask a voice question."
+      }
+    },
+    "android": {
+      "package": "org.uwaci.mobile",
+      "permissions": ["RECORD_AUDIO"],
+      "adaptiveIcon": {
+        "backgroundColor": "#E8F0E8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

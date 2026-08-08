@@ -1,0 +1,19 @@
+name: Engineering task
+description: Track architecture, tooling, test, or maintenance work.
+title: 'chore: '
+labels: [engineering]
+body:
+  - type: textarea
+    id: objective
+    attributes: { label: Objective }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes: { label: Acceptance criteria }
+    validations: { required: true }
+  - type: textarea
+    id: risks
+    attributes: { label: Risks and rollback }
+  - type: textarea
+    id: validation
+    attributes: { label: Validation plan }

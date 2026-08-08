@@ -1,0 +1,22 @@
+name: Feature request
+description: Propose a user-facing mobile capability.
+title: 'feat: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes: { label: User problem }
+    validations: { required: true }
+  - type: textarea
+    id: outcome
+    attributes: { label: Desired outcome }
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes: { label: Scope and non-goals }
+  - type: textarea
+    id: dependencies
+    attributes: { label: Backend or cross-team dependencies }
+  - type: textarea
+    id: accessibility
+    attributes: { label: Accessibility and language considerations }

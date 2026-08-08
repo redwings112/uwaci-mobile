@@ -1,0 +1,21 @@
+name: Expo project check
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  expo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.6
+          cache: npm
+      - run: npm ci
+      - run: npx expo config --type public
+      - run: npx expo-doctor

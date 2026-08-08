@@ -1,0 +1,12 @@
+# Add real GitHub teams after they are created. Do not replace these notes with invented users.
+# Suggested architecture-owned paths:
+# /app/ @uwaci/mobile-architecture
+# /src/app/ @uwaci/mobile-architecture
+# /src/core/ @uwaci/mobile-architecture
+# /src/store/ @uwaci/mobile-architecture
+# /src/shared/ @uwaci/mobile-architecture
+# /src/theme/ @uwaci/mobile-architecture
+# /.github/ @uwaci/mobile-architecture
+# /scripts/git/ @uwaci/mobile-architecture
+# /docs/architecture/ @uwaci/mobile-architecture
+# Feature team ownership can be added under /src/features/<feature>/.
