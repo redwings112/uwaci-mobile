@@ -6,10 +6,15 @@ import { Button } from '@/shared/components/Button/Button';
 interface ConversationComposerProps {
   onSend: (text: string) => Promise<void>;
   disabled?: boolean;
+  initialValue?: string;
 }
 
-export function ConversationComposer({ onSend, disabled = false }: ConversationComposerProps) {
-  const [value, setValue] = useState('');
+export function ConversationComposer({
+  onSend,
+  disabled = false,
+  initialValue = '',
+}: ConversationComposerProps) {
+  const [value, setValue] = useState(initialValue);
   const submit = async () => {
     const text = value.trim();
     if (!text) return;

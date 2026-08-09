@@ -17,7 +17,9 @@ import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
 import { voiceReset } from '@/features/voice/state/voiceSlice';
 import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
+import { Button } from '@/shared/components/Button/Button';
 import { IconButton } from '@/shared/components/IconButton/IconButton';
+import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -27,14 +29,21 @@ import {
   conversationOpened,
   conversationReset,
   messageAdded,
+  messageReconciled,
+  requestErrorCleared,
   requestFailed,
   requestFinished,
   requestStarted,
 } from '../state/conversationSlice';
-import { selectConversationMessages, selectConversationRequest } from '../state/selectors';
+import {
+  selectActiveConversationId,
+  selectConversationMessages,
+  selectConversationRequest,
+} from '../state/selectors';
 import type { QueryResult } from '../types';
 import { ConversationComposer } from './ConversationComposer';
 import { ConversationList } from './ConversationList';
+import { TranscriptionPreview } from './TranscriptionPreview';
 
 interface ConversationScreenProps {
   conversationId: string;
@@ -50,7 +59,10 @@ export function ConversationScreen({
   const router = useRouter();
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectConversationMessages);
+  const activeConversationId = useAppSelector(selectActiveConversationId);
   const request = useAppSelector(selectConversationRequest);
+  const network = useAppSelector((state) => state.network);
+  const auth = useAppSelector((state) => state.auth);
   const language = useAppSelector(selectPreferredLanguage);
   const voiceResponsesEnabled = useAppSelector((state) => state.settings.voiceResponsesEnabled);
   const recorder = useVoiceRecorder();
@@ -58,8 +70,17 @@ export function ConversationScreen({
   const [sendTextQuery] = useSendTextQueryMutation();
   const [submitFeedback, feedbackResult] = useSubmitFeedbackMutation();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [recoveryTranscript, setRecoveryTranscript] = useState<string | null>(null);
+  const [composerPrefill, setComposerPrefill] = useState<{ value: string; key: number }>({
+    value: '',
+    key: 0,
+  });
   const initialActionHandled = useRef(false);
   const isLocalConversation = conversationId.startsWith('new-');
+  const serverConversationId =
+    activeConversationId && !activeConversationId.startsWith('new-')
+      ? activeConversationId
+      : undefined;
   const remoteConversation = useGetConversationQuery(conversationId, { skip: isLocalConversation });
 
   useEffect(() => {
@@ -74,11 +95,21 @@ export function ConversationScreen({
   }, [dispatch, remoteConversation.data]);
 
   const acceptResult = useCallback(
-    async (result: QueryResult, includeUserMessage: boolean) => {
+    async (result: QueryResult, optimisticMessageId?: string) => {
       dispatch(conversationOpened(result.conversationId));
-      if (includeUserMessage) dispatch(messageAdded(result.userMessage));
+      if (optimisticMessageId) {
+        dispatch(
+          messageReconciled({
+            optimisticId: optimisticMessageId,
+            message: result.userMessage,
+          }),
+        );
+      } else {
+        dispatch(messageAdded(result.userMessage));
+      }
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
+      setRecoveryTranscript(null);
       if (voiceResponsesEnabled) {
         await speechService.speak(result.assistantMessage.content, {
           language: getLanguage(language).speechLocale,
@@ -90,6 +121,10 @@ export function ConversationScreen({
 
   const sendText = useCallback(
     async (text: string) => {
+      if (!network.isConnected || network.isInternetReachable === false) {
+        dispatch(requestFailed('Check your connection and try again.'));
+        return;
+      }
       const localMessageId = `local-${Date.now()}`;
       dispatch(requestStarted());
       dispatch(
@@ -105,42 +140,86 @@ export function ConversationScreen({
         const result = await sendTextQuery({
           text,
           preferred_language: language,
-          ...(isLocalConversation ? {} : { conversation_id: conversationId }),
+          ...(serverConversationId ? { conversation_id: serverConversationId } : {}),
         }).unwrap();
-        await acceptResult(result, false);
+        await acceptResult(result, localMessageId);
       } catch (error: unknown) {
         dispatch(requestFailed(mapApiError(error).message));
       }
     },
-    [acceptResult, conversationId, dispatch, isLocalConversation, language, sendTextQuery],
+    [
+      acceptResult,
+      dispatch,
+      language,
+      network.isConnected,
+      network.isInternetReachable,
+      sendTextQuery,
+      serverConversationId,
+    ],
   );
 
   const handleMicrophone = async () => {
     if (recorder.status !== 'recording') {
+      if (!network.isConnected || network.isInternetReachable === false) {
+        dispatch(requestFailed('You are offline. Type a draft or reconnect to send.'));
+        return;
+      }
+      dispatch(requestErrorCleared());
+      setRecoveryTranscript(null);
       await recorder.start();
       return;
     }
     const recording = await recorder.stop();
     if (!recording) return;
+    if (!network.isConnected || network.isInternetReachable === false) {
+      dispatch(requestFailed('You are offline. Reconnect, then record your question again.'));
+      return;
+    }
     dispatch(requestStarted());
     try {
       const result = await voiceQuery.submit({
         uri: recording.uri,
         preferredLanguage: language,
-        ...(isLocalConversation ? {} : { conversationId }),
+        ...(serverConversationId ? { conversationId: serverConversationId } : {}),
       });
-      await acceptResult(result, true);
+      await acceptResult(result);
     } catch (error: unknown) {
-      dispatch(requestFailed(mapApiError(error).message));
+      const mapped = mapApiError(error);
+      const transcript = mapped.details?.transcript;
+      if (mapped.code === 'TRANSCRIPTION_LOW_CONFIDENCE' && typeof transcript === 'string') {
+        setRecoveryTranscript(transcript);
+      }
+      dispatch(requestFailed(mapped.message));
     }
   };
 
   useEffect(() => {
     if (initialActionHandled.current) return;
     initialActionHandled.current = true;
-    if (initialText) void sendText(initialText);
-    else if (startRecording) void recorder.start();
-  }, [initialText, recorder, sendText, startRecording]);
+    let active = true;
+    if (initialText) {
+      queueMicrotask(() => {
+        if (active) void sendText(initialText);
+      });
+    } else if (startRecording) {
+      if (!network.isConnected || network.isInternetReachable === false) {
+        dispatch(requestFailed('You are offline. Reconnect before recording a question.'));
+      } else {
+        void recorder.start();
+      }
+    }
+    return () => {
+      active = false;
+    };
+  }, [
+    dispatch,
+    initialText,
+    network.isConnected,
+    network.isInternetReachable,
+    recorder,
+    sendText,
+    startRecording,
+  ]);
 
   const startNewConversation = () => {
     dispatch(conversationReset());
@@ -152,7 +231,7 @@ export function ConversationScreen({
     const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
     try {
       await submitFeedback({
-        conversation_id: conversationId,
+        conversation_id: serverConversationId ?? conversationId,
         ...(lastAssistant ? { message_id: lastAssistant.id } : {}),
         category,
       }).unwrap();
@@ -186,9 +265,59 @@ export function ConversationScreen({
 
       <ConversationList messages={messages} />
 
+      {!network.isConnected || network.isInternetReachable === false ? (
+        <View className="px-4 pb-2">
+          <StatusBanner
+            title="You’re offline"
+            message="Your conversation is still here. Reconnect before sending a voice or text question."
+            variant="warning"
+          />
+        </View>
+      ) : null}
+      {auth.status === 'error' && auth.errorMessage ? (
+        <View className="px-4 pb-2">
+          <StatusBanner
+            title="Secure session unavailable"
+            message={auth.errorMessage}
+            variant="error"
+          />
+        </View>
+      ) : null}
       {request.errorMessage ? (
         <View className="px-4">
           <ErrorState message={request.errorMessage} />
+        </View>
+      ) : null}
+      {recoveryTranscript ? (
+        <View className="gap-3 px-4 pb-3">
+          <TranscriptionPreview text={recoveryTranscript} />
+          <View className="flex-row gap-2">
+            <Button
+              className="flex-1"
+              variant="secondary"
+              onPress={() => {
+                dispatch(requestErrorCleared());
+                setRecoveryTranscript(null);
+                void recorder.start();
+              }}
+            >
+              Record again
+            </Button>
+            <Button
+              className="flex-1"
+              variant="secondary"
+              onPress={() => {
+                dispatch(requestErrorCleared());
+                setComposerPrefill((current) => ({
+                  value: recoveryTranscript,
+                  key: current.key + 1,
+                }));
+                setRecoveryTranscript(null);
+              }}
+            >
+              Type instead
+            </Button>
+          </View>
         </View>
       ) : null}
       {recorder.status === 'recording' ? (
@@ -210,7 +339,12 @@ export function ConversationScreen({
           onPress={() => void handleMicrophone()}
         />
       </View>
-      <ConversationComposer disabled={busy || recorder.status === 'recording'} onSend={sendText} />
+      <ConversationComposer
+        key={composerPrefill.key}
+        disabled={busy || recorder.status === 'recording'}
+        initialValue={composerPrefill.value}
+        onSend={sendText}
+      />
       {messages.some((message) => message.role === 'assistant') ? (
         <View className="bg-surface px-4 pb-3">
           <IconButton

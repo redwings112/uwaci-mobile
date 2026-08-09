@@ -9,6 +9,7 @@ import { selectPreferredLanguage } from '@/features/language/state/selectors';
 import { textQuerySchema } from '@/features/text_input/utils/textQuerySchema';
 import { MicrophoneButton } from '@/features/voice/components/MicrophoneButton';
 import { Screen } from '@/shared/components/Screen/Screen';
+import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -16,9 +17,12 @@ export function HomeScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
+  const network = useAppSelector((state) => state.network);
+  const auth = useAppSelector((state) => state.auth);
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const offline = !network.isConnected || network.isInternetReachable === false;
 
   const openConversation = (params: { startRecording?: string; initialText?: string }) => {
     router.push({
@@ -72,13 +76,33 @@ export function HomeScreen() {
       </View>
 
       <View className="my-10 items-center">
+        {offline ? (
+          <View className="mb-6 w-full">
+            <StatusBanner
+              title="You’re offline"
+              message="You can prepare a question now and send it after your connection returns."
+              variant="warning"
+            />
+          </View>
+        ) : null}
+        {auth.status === 'error' && auth.errorMessage ? (
+          <View className="mb-6 w-full">
+            <StatusBanner
+              title="Secure session unavailable"
+              message={auth.errorMessage}
+              variant="error"
+            />
+          </View>
+        ) : null}
         <MicrophoneButton
           status="idle"
           onPress={() => openConversation({ startRecording: 'true' })}
         />
         <View className="mt-5 flex-row items-center gap-2">
-          <View className="h-2 w-2 rounded-full bg-green-600" />
-          <Typography variant="caption">{t('home.statusReady')}</Typography>
+          <View className={`h-2 w-2 rounded-full ${offline ? 'bg-danger' : 'bg-green-600'}`} />
+          <Typography variant="caption">
+            {offline ? 'Waiting for a connection' : t('home.statusReady')}
+          </Typography>
         </View>
       </View>
 

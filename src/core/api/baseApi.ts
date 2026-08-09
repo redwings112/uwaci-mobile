@@ -7,7 +7,11 @@ import { prepareHeaders } from './prepareHeaders';
 
 export const baseApi = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: `${appConfig.apiBaseUrl}/api/v1`, prepareHeaders }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: `${appConfig.apiBaseUrl}/api/v1`,
+    prepareHeaders,
+    timeout: 30_000,
+  }),
   tagTypes: ['Conversation', 'Health'],
   endpoints: (builder) => ({
     liveHealth: builder.query<{ status: string }, void>({

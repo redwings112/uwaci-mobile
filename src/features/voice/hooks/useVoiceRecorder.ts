@@ -3,6 +3,7 @@ import { RecordingPresets, useAudioRecorder, useAudioRecorderState } from 'expo-
 
 import {
   cancelAudioRecording,
+  deleteTemporaryRecording,
   startAudioRecording,
   stopAudioRecording,
 } from '@/core/audio/audioRecorder';
@@ -26,8 +27,17 @@ export function useVoiceRecorder() {
       );
   }, [dispatch, recorder.uri, recorderState.durationMillis, voice.status]);
 
+  useEffect(
+    () => () => {
+      void cancelAudioRecording(recorder);
+    },
+    [recorder],
+  );
+
   const start = useCallback(async () => {
     try {
+      deleteTemporaryRecording(voice.recordingUri);
+      dispatch(recordingUpdated({ uri: null, durationMillis: 0 }));
       dispatch(voiceStatusChanged('requesting_permission'));
       const permission = await requestMicrophonePermission();
       if (permission !== 'granted')
@@ -42,7 +52,7 @@ export function useVoiceRecorder() {
         voiceFailed(error instanceof Error ? error.message : 'The microphone could not start.'),
       );
     }
-  }, [dispatch, recorder]);
+  }, [dispatch, recorder, voice.recordingUri]);
 
   const stop = useCallback(async (): Promise<CompletedRecording | null> => {
     try {

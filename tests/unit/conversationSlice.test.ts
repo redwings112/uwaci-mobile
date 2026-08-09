@@ -1,6 +1,7 @@
 import {
   conversationReducer,
   messageAdded,
+  messageReconciled,
   requestFailed,
   requestStarted,
 } from '@/features/conversation/state/conversationSlice';
@@ -21,5 +22,14 @@ describe('conversation reducer', () => {
     expect(state.requestStatus).toBe('sending');
     state = conversationReducer(state, requestFailed('Try again'));
     expect(state).toMatchObject({ requestStatus: 'error', errorMessage: 'Try again' });
+  });
+
+  it('reconciles an optimistic message with the canonical backend message', () => {
+    let state = conversationReducer(undefined, messageAdded({ ...message, id: 'local-1' }));
+    state = conversationReducer(
+      state,
+      messageReconciled({ optimisticId: 'local-1', message: { ...message, id: 'server-1' } }),
+    );
+    expect(state.messages).toEqual([{ ...message, id: 'server-1' }]);
   });
 });

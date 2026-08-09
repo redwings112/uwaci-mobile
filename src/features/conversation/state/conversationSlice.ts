@@ -32,6 +32,17 @@ const conversationSlice = createSlice({
       if (!state.messages.some((message) => message.id === action.payload.id))
         state.messages.push(action.payload);
     },
+    messageReconciled: (
+      state,
+      action: PayloadAction<{ optimisticId: string; message: ConversationMessage }>,
+    ) => {
+      const index = state.messages.findIndex(
+        (message) => message.id === action.payload.optimisticId,
+      );
+      if (index >= 0) state.messages[index] = action.payload.message;
+      else if (!state.messages.some((message) => message.id === action.payload.message.id))
+        state.messages.push(action.payload.message);
+    },
     requestStarted: (state) => {
       state.requestStatus = 'sending';
       state.errorMessage = null;
@@ -43,6 +54,10 @@ const conversationSlice = createSlice({
     requestFinished: (state) => {
       state.requestStatus = 'idle';
     },
+    requestErrorCleared: (state) => {
+      state.errorMessage = null;
+      if (state.requestStatus === 'error') state.requestStatus = 'idle';
+    },
     conversationReset: () => initialState,
   },
 });
@@ -52,6 +67,8 @@ export const {
   conversationOpened,
   conversationReset,
   messageAdded,
+  messageReconciled,
+  requestErrorCleared,
   requestFailed,
   requestFinished,
   requestStarted,

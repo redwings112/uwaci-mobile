@@ -44,6 +44,10 @@ export function mapApiError(value: unknown): AppError {
   if (!isRecord(value))
     return new AppError('UNKNOWN_ERROR', 'Something went wrong. Please try again.');
 
+  if (value.status === 'FETCH_ERROR' || value.status === 'TIMEOUT_ERROR') {
+    return new AppError('NETWORK_ERROR', userMessages.NETWORK_ERROR!, true);
+  }
+
   const envelope = isRecord(value.data) ? value.data : value;
   const backendError = isRecord(envelope.error) ? envelope.error : envelope;
   const rawCode = typeof backendError.code === 'string' ? backendError.code : 'UNKNOWN_ERROR';
@@ -56,11 +60,13 @@ export function mapApiError(value: unknown): AppError {
     isRecord(envelope.meta) && typeof envelope.meta.request_id === 'string'
       ? envelope.meta.request_id
       : undefined;
+  const details = isRecord(backendError.details) ? backendError.details : undefined;
 
   return new AppError(
     code,
     userMessages[code] ?? 'Uwaci could not complete that request.',
     retryable,
     requestId,
+    details,
   );
 }
