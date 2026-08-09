@@ -33,7 +33,13 @@
     },
     "android": {
       "package": "org.uwaci.mobile",
-      "permissions": ["RECORD_AUDIO"],
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E8F0E8",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -48,6 +54,12 @@
     },
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "808caaf8-ced3-4c85-955e-1926d67ba553"
+      }
     }
   }
 }
