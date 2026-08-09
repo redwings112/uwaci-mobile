@@ -9,8 +9,16 @@ import { settingsReducer, voiceResponsesChanged } from '@/features/settings/stat
 describe('preference and session reducers', () => {
   it('resolves and clears an authenticated session', () => {
     const authenticated = authReducer(undefined, sessionResolved({ userId: 'user-1' }));
-    expect(authenticated).toEqual({ status: 'authenticated', userId: 'user-1' });
-    expect(authReducer(authenticated, signedOut())).toEqual({ status: 'anonymous', userId: null });
+    expect(authenticated).toEqual({
+      status: 'authenticated',
+      userId: 'user-1',
+      errorMessage: null,
+    });
+    expect(authReducer(authenticated, signedOut())).toEqual({
+      status: 'anonymous',
+      userId: null,
+      errorMessage: null,
+    });
   });
 
   it('keeps UI locale separate from conversation language', () => {

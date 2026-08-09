@@ -2,7 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import type { AuthState } from '@/core/auth/authTypes';
 
-const initialState: AuthState = { status: 'unknown', userId: null };
+const initialState: AuthState = { status: 'unknown', userId: null, errorMessage: null };
 
 const authSlice = createSlice({
   name: 'auth',
@@ -11,10 +11,16 @@ const authSlice = createSlice({
     sessionResolved: (state, action: PayloadAction<{ userId: string | null }>) => {
       state.status = action.payload.userId ? 'authenticated' : 'anonymous';
       state.userId = action.payload.userId;
+      state.errorMessage = null;
     },
-    signedOut: () => ({ status: 'anonymous' as const, userId: null }),
+    sessionFailed: (state, action: PayloadAction<string>) => {
+      state.status = 'error';
+      state.userId = null;
+      state.errorMessage = action.payload;
+    },
+    signedOut: () => ({ status: 'anonymous' as const, userId: null, errorMessage: null }),
   },
 });
 
-export const { sessionResolved, signedOut } = authSlice.actions;
+export const { sessionFailed, sessionResolved, signedOut } = authSlice.actions;
 export const authReducer = authSlice.reducer;
