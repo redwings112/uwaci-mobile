@@ -1,12 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 
 import { apiMiddleware } from './middleware';
+import { preferencesListener } from './preferencesPersistence';
 import { rootReducer } from './rootReducer';
 
 export function createAppStore() {
   return configureStore({
     reducer: rootReducer,
-    middleware: (getDefault) => getDefault().concat(apiMiddleware),
+    middleware: (getDefault) =>
+      getDefault().prepend(preferencesListener.middleware).concat(apiMiddleware),
   });
 }
 

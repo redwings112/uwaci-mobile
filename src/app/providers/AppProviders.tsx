@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthSessionProvider } from './AuthSessionProvider';
 import { LocalizationProvider } from './LocalizationProvider';
+import { PreferencesProvider } from './PreferencesProvider';
 import { ReduxProvider } from './ReduxProvider';
 import { ThemeProvider } from './ThemeProvider';
 
@@ -12,7 +13,9 @@ export function AppProviders({ children }: PropsWithChildren) {
       <ReduxProvider>
         <LocalizationProvider>
           <AuthSessionProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <PreferencesProvider>
+              <ThemeProvider>{children}</ThemeProvider>
+            </PreferencesProvider>
           </AuthSessionProvider>
         </LocalizationProvider>
       </ReduxProvider>
