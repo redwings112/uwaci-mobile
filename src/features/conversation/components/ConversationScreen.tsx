@@ -15,7 +15,7 @@ import { MicrophoneButton } from '@/features/voice/components/MicrophoneButton';
 import { RecordingIndicator } from '@/features/voice/components/RecordingIndicator';
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
-import { voiceReset } from '@/features/voice/state/voiceSlice';
+import { voiceReset, voiceStatusChanged } from '@/features/voice/state/voiceSlice';
 import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
 import { Button } from '@/shared/components/Button/Button';
 import { IconButton } from '@/shared/components/IconButton/IconButton';
@@ -71,6 +71,7 @@ export function ConversationScreen({
   const [submitFeedback, feedbackResult] = useSubmitFeedbackMutation();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [recoveryTranscript, setRecoveryTranscript] = useState<string | null>(null);
+  const [speechNotice, setSpeechNotice] = useState<string | null>(null);
   const [composerPrefill, setComposerPrefill] = useState<{ value: string; key: number }>({
     value: '',
     key: 0,
@@ -110,10 +111,26 @@ export function ConversationScreen({
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
       setRecoveryTranscript(null);
+      setSpeechNotice(null);
       if (voiceResponsesEnabled) {
+        dispatch(voiceStatusChanged('speaking'));
         await speechService.speak(result.assistantMessage.content, {
           language: getLanguage(language).speechLocale,
+          onDone: () => dispatch(voiceStatusChanged('idle')),
+          onStopped: () => dispatch(voiceStatusChanged('idle')),
+          onUnavailable: () => {
+            setSpeechNotice(
+              `No ${getLanguage(language).label} device voice is installed. The answer remains available as text.`,
+            );
+            dispatch(voiceStatusChanged('idle'));
+          },
+          onError: () => {
+            setSpeechNotice('This answer could not be read aloud. You can still read it below.');
+            dispatch(voiceStatusChanged('idle'));
+          },
         });
+      } else {
+        dispatch(voiceStatusChanged('idle'));
       }
     },
     [dispatch, language, voiceResponsesEnabled],
@@ -159,6 +176,11 @@ export function ConversationScreen({
   );
 
   const handleMicrophone = async () => {
+    if (recorder.status === 'speaking') {
+      await speechService.stop();
+      dispatch(voiceStatusChanged('idle'));
+      return;
+    }
     if (recorder.status !== 'recording') {
       if (!network.isConnected || network.isInternetReachable === false) {
         dispatch(requestFailed('You are offline. Type a draft or reconnect to send.'));
@@ -281,6 +303,11 @@ export function ConversationScreen({
             message={auth.errorMessage}
             variant="error"
           />
+        </View>
+      ) : null}
+      {speechNotice ? (
+        <View className="px-4 pb-2">
+          <StatusBanner title="Spoken response unavailable" message={speechNotice} />
         </View>
       ) : null}
       {request.errorMessage ? (

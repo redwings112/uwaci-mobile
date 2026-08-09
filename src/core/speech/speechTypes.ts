@@ -4,4 +4,6 @@ export interface SpeakOptions {
   pitch?: number;
   onDone?: () => void;
   onError?: () => void;
+  onStopped?: () => void;
+  onUnavailable?: () => void;
 }
