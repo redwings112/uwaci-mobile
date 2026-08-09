@@ -20,14 +20,22 @@ export interface ConversationMessage {
 
 export interface Conversation {
   id: string;
+  preferredLanguage: UwaciLanguageCode;
+  title?: string | null;
   messages: ConversationMessage[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface QueryResult {
-  conversation_id: string;
-  user_message: ConversationMessage;
-  assistant_message: ConversationMessage;
-  transcription?: string;
+  conversationId: string;
+  userMessage: ConversationMessage;
+  assistantMessage: ConversationMessage;
+  transcription?: {
+    transcript: string;
+    confidence?: number | null;
+    primaryLanguage?: string | null;
+    detectedLanguages: string[];
+    codeSwitchingDetected: boolean;
+  };
 }

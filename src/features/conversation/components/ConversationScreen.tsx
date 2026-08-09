@@ -75,12 +75,12 @@ export function ConversationScreen({
 
   const acceptResult = useCallback(
     async (result: QueryResult, includeUserMessage: boolean) => {
-      dispatch(conversationOpened(result.conversation_id));
-      if (includeUserMessage) dispatch(messageAdded(result.user_message));
-      dispatch(messageAdded(result.assistant_message));
+      dispatch(conversationOpened(result.conversationId));
+      if (includeUserMessage) dispatch(messageAdded(result.userMessage));
+      dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
       if (voiceResponsesEnabled) {
-        await speechService.speak(result.assistant_message.content, {
+        await speechService.speak(result.assistantMessage.content, {
           language: getLanguage(language).speechLocale,
         });
       }

@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 import { appConfig } from '@/app/config/appConfig';
 
+import { type ApiResponse, unwrapApiResponse } from './apiTypes';
 import { prepareHeaders } from './prepareHeaders';
 
 export const baseApi = createApi({
@@ -11,6 +12,7 @@ export const baseApi = createApi({
   endpoints: (builder) => ({
     liveHealth: builder.query<{ status: string }, void>({
       query: () => '/health/live',
+      transformResponse: (response: ApiResponse<{ status: string }>) => unwrapApiResponse(response),
       providesTags: ['Health'],
     }),
   }),
