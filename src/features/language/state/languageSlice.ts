@@ -1,10 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import type { UwaciLanguageCode } from '@/core/constants/languages';
+import type { UiLanguageCode, UwaciLanguageCode } from '@/core/constants/languages';
 
 interface LanguageState {
   preferredConversationLanguage: UwaciLanguageCode;
-  uiLanguage: UwaciLanguageCode;
+  uiLanguage: UiLanguageCode;
 }
 
 const initialState: LanguageState = { preferredConversationLanguage: 'en', uiLanguage: 'en' };
@@ -16,7 +16,7 @@ const languageSlice = createSlice({
     preferredLanguageChanged: (state, action: PayloadAction<UwaciLanguageCode>) => {
       state.preferredConversationLanguage = action.payload;
     },
-    uiLanguageChanged: (state, action: PayloadAction<UwaciLanguageCode>) => {
+    uiLanguageChanged: (state, action: PayloadAction<UiLanguageCode>) => {
       state.uiLanguage = action.payload;
     },
   },

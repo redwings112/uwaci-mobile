@@ -1,10 +1,13 @@
-import { Switch, View } from 'react-native';
+import { Pressable, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
-import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
-import { selectPreferredLanguage } from '@/features/language/state/selectors';
+import {
+  preferredLanguageChanged,
+  uiLanguageChanged,
+} from '@/features/language/state/languageSlice';
+import { selectPreferredLanguage, selectUiLanguage } from '@/features/language/state/selectors';
 import { voiceResponsesChanged } from '@/features/settings/state/settingsSlice';
 import { IconButton } from '@/shared/components/IconButton/IconButton';
 import { Screen } from '@/shared/components/Screen/Screen';
@@ -15,6 +18,7 @@ export function SettingsScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
+  const uiLanguage = useAppSelector(selectUiLanguage);
   const voiceEnabled = useAppSelector((state) => state.settings.voiceResponsesEnabled);
   const { t } = useTranslation();
   return (
@@ -24,6 +28,32 @@ export function SettingsScreen() {
         <Typography variant="title">{t('settings.title')}</Typography>
       </View>
       <View className="gap-3 rounded-card border border-border bg-surface p-5">
+        <Typography variant="label">{t('settings.interfaceLanguage')}</Typography>
+        <View accessibilityRole="radiogroup" className="flex-row gap-2">
+          {(
+            [
+              { code: 'en', label: 'English' },
+              { code: 'fr', label: 'Français' },
+            ] as const
+          ).map((option) => {
+            const selected = option.code === uiLanguage;
+            return (
+              <Pressable
+                key={option.code}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                className={`min-h-12 flex-1 items-center justify-center rounded-control border px-4 ${selected ? 'border-brand bg-brand' : 'border-border bg-surface'}`}
+                onPress={() => dispatch(uiLanguageChanged(option.code))}
+              >
+                <Typography variant="label" className={selected ? 'text-white' : 'text-ink'}>
+                  {option.label}
+                </Typography>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+      <View className="mt-4 gap-3 rounded-card border border-border bg-surface p-5">
         <Typography variant="label">{t('settings.language')}</Typography>
         <LanguageSelector
           value={language}
@@ -45,7 +75,7 @@ export function SettingsScreen() {
         />
       </View>
       <View className="mt-8 gap-2">
-        <Typography variant="label">About Uwaci</Typography>
+        <Typography variant="label">{t('settings.aboutTitle')}</Typography>
         <Typography className="text-muted">{t('settings.about')}</Typography>
         <Typography variant="caption">Version 0.1.0 · Core AI prototype</Typography>
       </View>

@@ -25,8 +25,10 @@
   },
   "settings": {
     "title": "Paramètres",
+    "interfaceLanguage": "Langue de l’interface",
     "language": "Langue de conversation préférée",
     "voiceResponse": "Lire les réponses à voix haute",
+    "aboutTitle": "À propos d’Uwaci",
     "about": "Uwaci utilise son service sécurisé pour le traitement IA."
   },
   "errors": {

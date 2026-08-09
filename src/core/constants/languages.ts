@@ -1,4 +1,5 @@
 export type UwaciLanguageCode = 'en' | 'fr' | 'ln' | 'sw';
+export type UiLanguageCode = Extract<UwaciLanguageCode, 'en' | 'fr'>;
 
 export interface UwaciLanguage {
   code: UwaciLanguageCode;
