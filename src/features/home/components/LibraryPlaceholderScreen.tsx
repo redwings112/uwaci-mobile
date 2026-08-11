@@ -72,7 +72,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
   const startPrompt = (prompt: string) => {
     router.push({
       pathname: '/(app)/conversation/[conversationId]',
-      params: { conversationId: `new-${Date.now()}`, initialText: prompt },
+      params: { conversationId: 'new', initialText: prompt },
     });
   };
 
@@ -88,7 +88,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
 
   const title = tab === 'history' ? 'History' : tab === 'saved' ? 'Saved' : 'Discover';
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <AppHeader onMenu={() => router.push('/(app)/profile')} />
       <View className="px-4 pb-3 pt-1">
         <Typography variant="title">{title}</Typography>
@@ -126,7 +126,10 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
 
         {tab === 'history'
           ? history.map((item) => (
-              <Pressable key={item.conversationId} onPress={() => openConversation(item.conversationId)}>
+              <Pressable
+                key={item.conversationId}
+                onPress={() => openConversation(item.conversationId)}
+              >
                 <SurfaceCard className="mb-3 flex-row items-center p-4">
                   <View className="h-11 w-11 items-center justify-center rounded-full bg-lavender">
                     <Text className="text-lg text-brand">◷</Text>
@@ -135,12 +138,12 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                     <Text className="text-sm font-semibold text-ink" numberOfLines={1}>
                       {item.title || 'Uwaci conversation'}
                     </Text>
-                    <Text className="mt-1 text-[10px] leading-4 text-muted" numberOfLines={2}>
+                    <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={2}>
                       {item.preview}
                     </Text>
                   </View>
                   <View className="ml-2 items-end">
-                    <Text className="text-[9px] text-muted">{timeLabel(item.updatedAt)}</Text>
+                    <Text className="text-xs text-muted">{timeLabel(item.updatedAt)}</Text>
                     <Text className="mt-2 text-muted">›</Text>
                   </View>
                 </SurfaceCard>
@@ -168,7 +171,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                 <Pressable onPress={() => openConversation(answer.conversationId)}>
                   <View className="flex-row items-center">
                     <Text className="text-xs font-semibold text-violet">★ Saved answer</Text>
-                    <Text className="ml-auto text-[9px] text-muted">
+                    <Text className="ml-auto text-xs text-muted">
                       {timeLabel(answer.createdAt)}
                     </Text>
                   </View>
@@ -178,10 +181,10 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  className="mt-3 min-h-9 self-end justify-center px-2"
+                  className="mt-3 min-h-9 justify-center self-end px-2"
                   onPress={() => void removeSaved(answer)}
                 >
-                  <Text className="text-[10px] font-semibold text-danger">Remove</Text>
+                  <Text className="text-xs font-semibold text-danger">Remove</Text>
                 </Pressable>
               </SurfaceCard>
             ))
@@ -202,7 +205,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                   </View>
                   <View className="ml-3 flex-1">
                     <Text className="text-sm font-semibold text-ink">{item.title}</Text>
-                    <Text className="mt-1 text-[10px] leading-4 text-muted" numberOfLines={2}>
+                    <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={2}>
                       {item.prompt}
                     </Text>
                   </View>

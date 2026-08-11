@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { mapApiError } from '@/core/errors/mapApiError';
+import { ensureAuthSession } from '@/core/auth/authSession';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
@@ -48,8 +49,14 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
       dispatch(requestFailed('You are offline. Reconnect before recording a question.'));
       return;
     }
+    try {
+      await ensureAuthSession();
+    } catch {
+      router.push({ pathname: '/(auth)/sign-in', params: { next: 'voice' } });
+      return;
+    }
     await recorder.start();
-  }, [dispatch, offline, recorder]);
+  }, [dispatch, offline, recorder, router]);
 
   useEffect(() => {
     if (initialActionHandled.current || !startRecording) return;
@@ -93,16 +100,16 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <AppHeader onMenu={() => router.push('/(app)/profile')} />
-      <View className="flex-1 px-3">
+      <View className="flex-1 px-4">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Choose conversation language"
-          className="mb-2 min-h-10 justify-center self-center rounded-full border border-border bg-surface px-4"
+          className="mb-3 min-h-12 justify-center self-center rounded-full border border-border bg-surface px-5"
           onPress={() => setShowLanguage((value) => !value)}
         >
-          <Text className="text-[11px] font-semibold text-brand">
+          <Text className="text-sm font-semibold text-brand">
             ◎ Auto-detect · {language.toUpperCase()} ⌄
           </Text>
         </Pressable>
@@ -120,12 +127,12 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
 
         <View className="items-center pt-1">
           <View className="mb-1 h-3 w-3 rounded-full bg-accent" />
-          <View className="h-40 w-40 items-center justify-center rounded-full border border-dashed border-brand/30">
-            <View className="h-32 w-32 items-center justify-center rounded-full border border-violet/30 bg-lavender">
+          <View className="h-52 w-52 items-center justify-center rounded-full border border-dashed border-brand/30">
+            <View className="h-44 w-44 items-center justify-center rounded-full border border-violet/30 bg-lavender">
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={recording ? 'Recording in progress' : 'Start voice recording'}
-                className="h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-brand"
+                className="h-40 w-40 items-center justify-center overflow-hidden rounded-full bg-brand"
                 disabled={busy}
                 onPress={() => void (recording ? askUwaci() : begin())}
               >
@@ -154,8 +161,8 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
           </Typography>
         </View>
 
-        <SurfaceCard className="mt-4 min-h-28 p-4">
-          <Text className="text-[10px] font-semibold text-brand">⌁ Live transcription</Text>
+        <SurfaceCard className="mt-5 min-h-32 p-5">
+          <Text className="text-xs font-semibold text-brand">⌁ Live transcription</Text>
           <Typography className="mt-2 font-medium">
             {recording
               ? 'Audio is being captured securely…'
@@ -174,59 +181,63 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
           </View>
         </SurfaceCard>
 
-        {requestError ? (
-          <Text className="mt-2 text-center text-xs text-danger">{requestError}</Text>
+        {requestError || recorder.errorMessage ? (
+          <Text className="mt-2 text-center text-sm text-danger">
+            {requestError ?? recorder.errorMessage}
+          </Text>
         ) : null}
-        <View className="mt-2 flex-row items-start justify-around">
+        <View className="mt-3 flex-row items-start justify-around">
           <Pressable
-            className="min-h-16 w-24 items-center justify-center"
+            className="min-h-20 w-28 items-center justify-center"
             onPress={() => {
               void cancel();
               router.push({
                 pathname: '/(app)/conversation/[conversationId]',
-                params: { conversationId: `new-${Date.now()}`, focusComposer: 'true' },
+                params: { conversationId: 'new', focusComposer: 'true' },
               });
             }}
           >
-            <View className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+            <View className="h-14 w-14 items-center justify-center rounded-full border border-border bg-surface">
               <Text className="text-brand">▦</Text>
             </View>
-            <Text className="mt-1 text-[10px] text-ink">Type instead</Text>
+            <Text className="mt-2 text-xs font-medium text-ink dark:text-white">Type instead</Text>
           </Pressable>
           <Pressable
-            className="min-h-16 w-24 items-center justify-center"
+            className="min-h-20 w-28 items-center justify-center"
             disabled={!recording}
             onPress={() => void cancel()}
           >
-            <View className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+            <View className="h-14 w-14 items-center justify-center rounded-full border border-border bg-surface">
               <Text className="text-violet">×</Text>
             </View>
-            <Text className="mt-1 text-[10px] text-ink">Cancel</Text>
+            <Text className="mt-2 text-xs font-medium text-ink dark:text-white">Cancel</Text>
           </Pressable>
           <Pressable
-            className="min-h-16 w-24 items-center justify-center"
+            className="min-h-20 w-28 items-center justify-center"
             onPress={() => void askUwaci()}
           >
-            <View className="h-11 w-11 items-center justify-center rounded-full border-2 border-brand bg-lavender">
+            <View className="h-14 w-14 items-center justify-center rounded-full border-2 border-brand bg-lavender">
               <Text className="text-xl text-violet">◉</Text>
             </View>
-            <Text className="mt-1 text-[10px] text-ink">Ask Uwaci</Text>
-            <Text className="text-center text-[8px] text-violet">
+            <Text className="mt-2 text-xs font-medium text-ink dark:text-white">Ask Uwaci</Text>
+            <Text className="mt-0.5 text-center text-xs text-violet">
               {recording ? 'Stop and get my answer' : 'Start speaking'}
             </Text>
           </Pressable>
         </View>
 
         <Pressable
-          className="mb-2 mt-auto min-h-14 flex-row items-center rounded-control border border-border bg-surface px-3"
+          className="mb-3 mt-auto min-h-16 flex-row items-center rounded-control border border-border bg-surface px-4"
           onPress={() => router.push('/(app)/profile')}
         >
           <View className="h-9 w-9 items-center justify-center rounded-full bg-lavender">
             <Text className="text-brand">♢</Text>
           </View>
           <View className="ml-3 flex-1">
-            <Text className="text-[11px] font-semibold text-ink">Your data is private</Text>
-            <Text className="text-[9px] text-muted">Uwaci protects your conversations.</Text>
+            <Text className="text-sm font-semibold text-ink dark:text-white">
+              Your data is private
+            </Text>
+            <Text className="mt-0.5 text-xs text-muted">Uwaci protects your conversations.</Text>
           </View>
           <Text className="text-muted">›</Text>
         </Pressable>

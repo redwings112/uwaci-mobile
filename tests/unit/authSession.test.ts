@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { getAuthClient } from '@/core/auth/authClient';
 import {
   clearAuthSession,
+  ensureAuthSession,
   getAccessToken,
   getAuthSession,
   initializeAuthSession,
@@ -164,7 +165,15 @@ describe('authentication session lifecycle', () => {
     expect(client.auth.signInAnonymously).not.toHaveBeenCalled();
   });
 
-  it('starts and persists an anonymous session when none exists', async () => {
+  it('leaves a missing session anonymous during application bootstrap', async () => {
+    const client = createClient();
+    client.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+
+    await expect(initializeAuthSession()).resolves.toBeNull();
+    expect(client.auth.signInAnonymously).not.toHaveBeenCalled();
+  });
+
+  it('starts and persists an anonymous session when a protected flow begins', async () => {
     const client = createClient();
     const anonymousSession = createSupabaseSession();
     delete anonymousSession.expires_at;
@@ -174,7 +183,7 @@ describe('authentication session lifecycle', () => {
       error: null,
     });
 
-    await expect(initializeAuthSession()).resolves.toEqual({
+    await expect(ensureAuthSession()).resolves.toEqual({
       accessToken: 'remote-access',
       refreshToken: 'remote-refresh',
       userId: 'remote-user',
@@ -182,17 +191,18 @@ describe('authentication session lifecycle', () => {
     expect(SecureStore.setItemAsync).toHaveBeenCalled();
   });
 
-  it('rejects a failed anonymous sign-in', async () => {
+  it('turns disabled anonymous access into an actionable sign-in error', async () => {
     const client = createClient();
     client.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
     client.auth.signInAnonymously.mockResolvedValue({
       data: { session: null },
-      error: new Error('anonymous sign-in failed'),
+      error: new Error('Anonymous sign-ins are disabled'),
     });
 
-    await expect(initializeAuthSession()).rejects.toMatchObject({
+    await expect(ensureAuthSession()).rejects.toMatchObject({
       code: 'AUTHENTICATION_REQUIRED',
       retryable: true,
+      message: expect.stringContaining('Sign in'),
     });
   });
 

@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 
 import { getLanguage } from '@/core/constants/languages';
-import {
-  isAnswerSaved,
-  toggleSavedAnswer,
-} from '@/features/library/storage/libraryStorage';
+import { isAnswerSaved, toggleSavedAnswer } from '@/features/library/storage/libraryStorage';
 import { speechService } from '@/core/speech/speechService';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
@@ -86,7 +83,7 @@ export function AssistantMessage({
     <SurfaceCard className="mb-3 overflow-hidden p-3">
       <View className="mb-2 flex-row items-center">
         <UwaciLogo compact />
-        <Text className="ml-2 text-[9px] text-muted">
+        <Text className="ml-2 text-xs text-muted">
           ·{' '}
           {new Date(message.createdAt).toLocaleTimeString([], {
             hour: 'numeric',
@@ -134,16 +131,16 @@ export function AssistantMessage({
                   <View
                     className={`h-5 w-5 items-center justify-center rounded-full ${colors[index % colors.length]}`}
                   >
-                    <Text className="text-[9px] font-semibold text-white">{index + 1}</Text>
+                    <Text className="text-xs font-semibold text-white">{index + 1}</Text>
                   </View>
                   {index < visibleSteps.length - 1 ? (
                     <View className="w-px flex-1 bg-border" />
                   ) : null}
                 </View>
                 <View className="flex-1 pb-3">
-                  <Text className="text-[11px] font-semibold text-ink">{title}</Text>
+                  <Text className="text-sm font-semibold text-ink dark:text-white">{title}</Text>
                   {rest.length ? (
-                    <Text className="mt-0.5 text-[9px] leading-3 text-muted">
+                    <Text className="mt-1 text-xs leading-4 text-muted dark:text-white/60">
                       {rest.join(':').trim()}
                     </Text>
                   ) : null}
@@ -156,7 +153,7 @@ export function AssistantMessage({
               className="min-h-9 justify-center"
               onPress={() => setExpanded((value) => !value)}
             >
-              <Text className="text-[10px] font-medium text-brand">
+              <Text className="text-xs font-medium text-brand">
                 {expanded ? 'Show less  ⌃' : 'Show more  ⌄'}
               </Text>
             </Pressable>
@@ -169,9 +166,9 @@ export function AssistantMessage({
           className="h-7 w-7 items-center justify-center rounded-full bg-lavender"
           onPress={() => void speak()}
         >
-          <Text className="text-[10px] text-brand">{speaking ? '■' : '▶'}</Text>
+          <Text className="text-xs text-brand">{speaking ? '■' : '▶'}</Text>
         </Pressable>
-        <Text className="ml-2 text-[8px] text-muted">0:00</Text>
+        <Text className="ml-2 text-xs text-muted">Device voice</Text>
         <View className="mx-2 flex-1 flex-row items-center gap-0.5">
           {bars.map((height, index) => (
             <View
@@ -185,7 +182,7 @@ export function AssistantMessage({
           className="min-h-7 min-w-10 items-center justify-center rounded-full bg-surface"
           onPress={() => setRate((value) => (value === 1 ? 1.25 : value === 1.25 ? 0.8 : 1))}
         >
-          <Text className="text-[8px] text-brand">{rate}x</Text>
+          <Text className="text-xs text-brand">{rate}x</Text>
         </Pressable>
       </View>
     </SurfaceCard>

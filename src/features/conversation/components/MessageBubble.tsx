@@ -12,7 +12,7 @@ export function MessageBubble({ message }: { message: ConversationMessage }) {
       accessibilityLabel={`${user ? 'You said' : 'Uwaci answered'}: ${message.content}`}
     >
       {user ? (
-        <Text className="mb-1 text-[9px] font-medium text-muted">
+        <Text className="mb-1 text-xs font-medium text-muted">
           You ·{' '}
           {new Date(message.createdAt).toLocaleTimeString([], {
             hour: 'numeric',
@@ -28,7 +28,7 @@ export function MessageBubble({ message }: { message: ConversationMessage }) {
       ) : null}
       {user && message.inputMethod === 'voice' ? (
         <View className="mt-2 h-6 w-6 items-center justify-center self-end rounded-full bg-surface">
-          <Text className="text-[10px] text-brand">▶</Text>
+          <Text className="text-xs text-brand">▶</Text>
         </View>
       ) : null}
     </View>

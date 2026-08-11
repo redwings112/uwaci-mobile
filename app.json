@@ -1,9 +1,9 @@
 {
   "expo": {
     "name": "Uwaci",
-    "slug": "uwaci-mobile",
+    "slug": "uwaci",
     "scheme": "uwaci",
-    "version": "0.1.0",
+    "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -61,7 +61,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "808caaf8-ced3-4c85-955e-1926d67ba553"
+        "projectId": "b3313987-2622-4ade-968a-8df4184e4846"
       }
     }
   }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAuthClient } from '@/core/auth/authClient';
 import { secureStorage } from '@/core/storage/secureStorage';
@@ -10,7 +11,13 @@ import { Button } from '@/shared/components/Button/Button';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
 
-export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
+interface AuthScreenProps {
+  mode: 'sign-in' | 'sign-up';
+  next?: 'voice' | 'text';
+  conversationId?: string;
+}
+
+export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
   const router = useRouter();
   const client = getAuthClient();
   const [email, setEmail] = useState('');
@@ -39,14 +46,26 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         return;
       }
       await secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
-      router.replace('/(app)');
+      if (next === 'voice') {
+        router.replace({ pathname: '/(app)', params: { startRecording: 'true' } });
+      } else if (next === 'text') {
+        router.replace({
+          pathname: '/(app)/conversation/[conversationId]',
+          params: {
+            conversationId: conversationId ?? 'new',
+            focusComposer: 'true',
+          },
+        });
+      } else {
+        router.replace('/(app)');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View className="flex-1 bg-canvas dark:bg-[#111126]">
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <AppHeader back onBack={() => router.back()} actionIcon="?" actionLabel="Account help" />
       <View className="flex-1 px-5 pt-6">
         <Typography variant="title">{signUp ? 'Create your account' : 'Welcome back'}</Typography>
@@ -55,6 +74,17 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             ? 'Save your Uwaci experience across devices.'
             : 'Sign in to continue with your account.'}
         </Typography>
+        {next ? (
+          <View className="mt-4 rounded-control border border-brand/20 bg-lavender p-4">
+            <Typography variant="label" className="text-brand">
+              Sign in required
+            </Typography>
+            <Typography className="mt-1 text-ink">
+              Guest access is disabled for this project. After signing in, Uwaci will return you to
+              your {next === 'voice' ? 'voice question' : 'text conversation'}.
+            </Typography>
+          </View>
+        ) : null}
         <SurfaceCard className="mt-6 gap-4 p-5">
           <View>
             <Typography variant="label">Email</Typography>
@@ -98,13 +128,21 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         </SurfaceCard>
         <Pressable
           className="mt-5 min-h-11 items-center justify-center"
-          onPress={() => router.replace(signUp ? '/(auth)/sign-in' : '/(auth)/sign-up')}
+          onPress={() =>
+            router.replace({
+              pathname: signUp ? '/(auth)/sign-in' : '/(auth)/sign-up',
+              params: {
+                ...(next ? { next } : {}),
+                ...(conversationId ? { conversationId } : {}),
+              },
+            })
+          }
         >
           <Typography className="text-brand">
             {signUp ? 'Already have an account? Sign in' : 'New to Uwaci? Create account'}
           </Typography>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

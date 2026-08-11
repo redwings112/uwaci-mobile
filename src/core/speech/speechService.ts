@@ -27,11 +27,13 @@ export const speechService = {
         const voices = await Speech.getAvailableVoicesAsync();
         const availableLanguage = resolveSpeechLanguage(language, voices);
         if (!availableLanguage) {
-          speaking = false;
-          options.onUnavailable?.();
-          return;
+          // Some Android devices expose no matching locale even though their
+          // default TTS engine can still speak the response. Fall back to the
+          // device voice instead of silently producing no audio.
+          language = undefined;
+        } else {
+          language = availableLanguage;
         }
-        language = availableLanguage;
       } catch {
         // If voice enumeration fails, let the native speech engine attempt the requested locale.
       }
@@ -52,6 +54,7 @@ export const speechService = {
       onError: () => {
         speaking = false;
         options.onError?.();
+        options.onUnavailable?.();
       },
     });
   },

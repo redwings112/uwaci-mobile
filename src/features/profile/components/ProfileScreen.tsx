@@ -90,22 +90,22 @@ export function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <AppHeader actionLabel="Notifications" actionIcon="♧" />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-3 pb-4"
         showsVerticalScrollIndicator={false}
       >
-        <SurfaceCard className="flex-row items-center p-3">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-lavender">
+        <SurfaceCard className="flex-row items-center p-4">
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-lavender">
             <Text className="text-2xl text-brand">♙</Text>
           </View>
           <View className="ml-3 flex-1">
             <Text className="text-sm font-semibold text-ink">{identity.name}</Text>
-            <Text className="text-[10px] text-muted">{identity.email}</Text>
+            <Text className="text-xs text-muted">{identity.email}</Text>
             <View className="mt-1 self-start rounded-full border border-brand/30 px-2 py-0.5">
-              <Text className="text-[8px] text-brand">Free plan</Text>
+              <Text className="text-xs text-brand">Free plan</Text>
             </View>
           </View>
           <Text className="text-muted">›</Text>
@@ -116,24 +116,24 @@ export function ProfileScreen() {
           </View>
           <View className="ml-3 flex-1">
             <Text className="text-xs font-semibold text-ink">Unlock more with Uwaci Plus</Text>
-            <Text className="mt-0.5 text-[9px] text-muted">
+            <Text className="mt-1 text-xs leading-4 text-muted">
               More daily usage, faster answers, file uploads, and advanced features.
             </Text>
           </View>
           <Pressable className="min-h-9 items-center justify-center rounded-full bg-violet px-4">
-            <Text className="text-[10px] font-semibold text-white">Upgrade</Text>
+            <Text className="text-xs font-semibold text-white">Upgrade</Text>
           </Pressable>
         </SurfaceCard>
 
         {groups.map((group) => (
           <View key={group.label} className="mt-3">
-            <Text className="mb-1 ml-1 text-[9px] font-semibold text-muted">{group.label}</Text>
+            <Text className="mb-2 ml-1 text-xs font-semibold text-muted">{group.label}</Text>
             <SurfaceCard className="overflow-hidden">
               {group.rows.map(([icon, title, fallback, key], index) => (
                 <Pressable
                   key={title}
                   accessibilityRole="button"
-                  className={`min-h-12 flex-row items-center px-3 ${index ? 'border-t border-border' : ''}`}
+                  className={`min-h-16 flex-row items-center px-4 ${index ? 'border-t border-border' : ''}`}
                   onPress={() => {
                     if (key === 'appearance') router.push('/(app)/appearance');
                   }}
@@ -142,8 +142,10 @@ export function ProfileScreen() {
                     {icon}
                   </Text>
                   <View className="flex-1">
-                    <Text className="text-[11px] font-medium text-ink">{title}</Text>
-                    <Text className="text-[8px] text-muted">{subtitle(key, fallback)}</Text>
+                    <Text className="text-sm font-semibold text-ink dark:text-white">{title}</Text>
+                    <Text className="mt-0.5 text-xs leading-4 text-muted">
+                      {subtitle(key, fallback)}
+                    </Text>
                   </View>
                   <Text className="text-muted">›</Text>
                 </Pressable>

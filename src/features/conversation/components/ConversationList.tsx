@@ -30,7 +30,7 @@ export function ConversationList({
         item.role === 'user' ? (
           <UserMessage message={item} />
         ) : (
-          <AssistantMessage message={item} conversationId={conversationId} />
+          <AssistantMessage message={item} {...(conversationId ? { conversationId } : {})} />
         )
       }
     />

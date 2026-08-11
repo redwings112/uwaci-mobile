@@ -74,19 +74,40 @@ export async function initializeAuthSession(): Promise<AuthSession | null> {
       true,
     );
   }
-  let session = current.data.session;
-  if (!session) {
-    const anonymous = await client.auth.signInAnonymously();
-    if (anonymous.error || !anonymous.data.session) {
-      throw new AppError(
-        'AUTHENTICATION_REQUIRED',
-        'Uwaci could not start a secure session. Please try again.',
-        true,
-      );
-    }
-    session = anonymous.data.session;
+  if (!current.data.session) return null;
+  const normalized = fromSupabaseSession(current.data.session);
+  await saveAuthSession(normalized);
+  return normalized;
+}
+
+/**
+ * Resolve a backend-capable session only when the user is about to use a
+ * protected feature. Anonymous auth is optional in Supabase projects, so a
+ * disabled guest setting becomes an actionable sign-in flow instead of a
+ * failed text/voice request.
+ */
+export async function ensureAuthSession(): Promise<AuthSession> {
+  const restored = await initializeAuthSession();
+  if (restored) return restored;
+  const client = getAuthClient();
+  if (!client) {
+    throw new AppError(
+      'AUTHENTICATION_REQUIRED',
+      'Sign in or create an account to start a conversation.',
+      true,
+    );
   }
-  const normalized = fromSupabaseSession(session);
+  const anonymous = await client.auth.signInAnonymously();
+  if (anonymous.error || !anonymous.data.session) {
+    throw new AppError(
+      'AUTHENTICATION_REQUIRED',
+      anonymous.error?.message?.toLowerCase().includes('anonymous')
+        ? 'Guest access is disabled for this Uwaci project. Sign in or create an account to continue.'
+        : 'Uwaci could not start a secure session. Please sign in or try again.',
+      true,
+    );
+  }
+  const normalized = fromSupabaseSession(anonymous.data.session);
   await saveAuthSession(normalized);
   return normalized;
 }

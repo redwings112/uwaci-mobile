@@ -61,7 +61,7 @@ export function AppearanceScreen() {
         : 'rounded-control';
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <AppHeader back onBack={() => router.back()} actionLabel="Appearance help" actionIcon="?" />
       <ScrollView
         className="flex-1"
@@ -69,9 +69,9 @@ export function AppearanceScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text className="text-xl font-bold text-ink">Appearance</Text>
-        <Text className="mt-0.5 text-[10px] text-muted">Choose how Uwaci looks and feels.</Text>
+        <Text className="mt-1 text-xs text-muted">Choose how Uwaci looks and feels.</Text>
 
-        <Text className="mb-2 mt-5 text-[10px] font-semibold text-muted">Theme</Text>
+        <Text className="mb-2 mt-5 text-xs font-semibold text-muted">Theme</Text>
         <View className="flex-row gap-2">
           {themes.map((theme) => {
             const selected = settings.themeMode === theme.value;
@@ -85,7 +85,7 @@ export function AppearanceScreen() {
                 onPress={() => dispatch(themeModeChanged(theme.value))}
               >
                 <View
-                  className={`h-20 w-full rounded-lg border border-border p-2 ${dark ? 'bg-[#111126]' : 'bg-white'}`}
+                  className={`h-28 w-full rounded-lg border border-border p-3 ${dark ? 'bg-[#111126]' : 'bg-white'}`}
                 >
                   <Text className={`text-xs ${dark ? 'text-white' : 'text-accent'}`}>
                     {theme.icon}
@@ -98,22 +98,22 @@ export function AppearanceScreen() {
                   />
                   {selected ? (
                     <View className="absolute right-1 top-1 h-4 w-4 items-center justify-center rounded-full bg-brand">
-                      <Text className="text-[8px] text-white">✓</Text>
+                      <Text className="text-xs text-white">✓</Text>
                     </View>
                   ) : null}
                 </View>
                 <Text
-                  className={`mt-2 text-[10px] font-semibold ${selected ? 'text-brand' : 'text-ink'}`}
+                  className={`mt-2 text-xs font-semibold ${selected ? 'text-brand' : 'text-ink dark:text-white'}`}
                 >
                   {theme.label}
                 </Text>
-                <Text className="text-[8px] text-muted">{theme.helper}</Text>
+                <Text className="mt-0.5 text-xs text-muted">{theme.helper}</Text>
               </Pressable>
             );
           })}
         </View>
 
-        <Text className="mb-2 mt-5 text-[10px] font-semibold text-muted">Accent color</Text>
+        <Text className="mb-2 mt-5 text-xs font-semibold text-muted">Accent color</Text>
         <View className="flex-row justify-between">
           {(Object.keys(accentHex) as AccentColor[]).map((color) => {
             const selected = settings.accentColor === color;
@@ -136,14 +136,14 @@ export function AppearanceScreen() {
             );
           })}
         </View>
-        <Text className="mt-2 text-[9px] text-muted">
+        <Text className="mt-2 text-xs text-muted">
           This color is used for highlights, buttons and icons.
         </Text>
 
-        <Text className="mb-2 mt-5 text-[10px] font-semibold text-muted">Display options</Text>
+        <Text className="mb-2 mt-5 text-xs font-semibold text-muted">Display options</Text>
         <SurfaceCard className="overflow-hidden">
           <Pressable
-            className="min-h-14 flex-row items-center px-3"
+            className="min-h-16 flex-row items-center px-4"
             onPress={() =>
               dispatch(
                 textSizeChanged(cycle<TextSize>(settings.textSize, ['small', 'medium', 'large'])),
@@ -154,16 +154,18 @@ export function AppearanceScreen() {
               <Text className="text-brand">Aa</Text>
             </View>
             <View className="ml-3 flex-1">
-              <Text className="text-[11px] font-medium text-ink">Text size</Text>
-              <Text className="text-[8px] text-muted">Adjust text size for better readability</Text>
+              <Text className="text-sm font-semibold text-ink dark:text-white">Text size</Text>
+              <Text className="mt-0.5 text-xs text-muted">
+                Adjust text size for better readability
+              </Text>
             </View>
-            <Text className="text-[9px] text-muted">
+            <Text className="text-xs text-muted">
               {settings.textSize[0]?.toUpperCase()}
               {settings.textSize.slice(1)} ›
             </Text>
           </Pressable>
           <Pressable
-            className="min-h-14 flex-row items-center border-t border-border px-3"
+            className="min-h-16 flex-row items-center border-t border-border px-4"
             onPress={() =>
               dispatch(
                 bubbleStyleChanged(
@@ -176,21 +178,23 @@ export function AppearanceScreen() {
               <Text className="text-brand">▤</Text>
             </View>
             <View className="ml-3 flex-1">
-              <Text className="text-[11px] font-medium text-ink">Chat bubble style</Text>
-              <Text className="text-[8px] text-muted">Choose how messages appear</Text>
+              <Text className="text-sm font-semibold text-ink dark:text-white">
+                Chat bubble style
+              </Text>
+              <Text className="mt-0.5 text-xs text-muted">Choose how messages appear</Text>
             </View>
-            <Text className="text-[9px] text-muted">
+            <Text className="text-xs text-muted">
               {settings.bubbleStyle[0]?.toUpperCase()}
               {settings.bubbleStyle.slice(1)} ›
             </Text>
           </Pressable>
-          <View className="min-h-14 flex-row items-center border-t border-border px-3">
+          <View className="min-h-16 flex-row items-center border-t border-border px-4">
             <View className="h-8 w-8 items-center justify-center rounded-full bg-lavender">
               <Text className="text-brand">≋</Text>
             </View>
             <View className="ml-3 flex-1">
-              <Text className="text-[11px] font-medium text-ink">Reduce motion</Text>
-              <Text className="text-[8px] text-muted">Minimize animations and effects</Text>
+              <Text className="text-sm font-semibold text-ink dark:text-white">Reduce motion</Text>
+              <Text className="mt-0.5 text-xs text-muted">Minimize animations and effects</Text>
             </View>
             <Switch
               value={settings.reduceMotion}
@@ -200,13 +204,15 @@ export function AppearanceScreen() {
               trackColor={{ false: '#E8E7EE', true: accent }}
             />
           </View>
-          <View className="min-h-14 flex-row items-center border-t border-border px-3">
+          <View className="min-h-16 flex-row items-center border-t border-border px-4">
             <View className="h-8 w-8 items-center justify-center rounded-full bg-lavender">
               <Text className="text-brand">◐</Text>
             </View>
             <View className="ml-3 flex-1">
-              <Text className="text-[11px] font-medium text-ink">Increase contrast</Text>
-              <Text className="text-[8px] text-muted">Improve text and UI contrast</Text>
+              <Text className="text-sm font-semibold text-ink dark:text-white">
+                Increase contrast
+              </Text>
+              <Text className="mt-0.5 text-xs text-muted">Improve text and UI contrast</Text>
             </View>
             <Switch
               value={settings.increaseContrast}
@@ -218,7 +224,7 @@ export function AppearanceScreen() {
           </View>
         </SurfaceCard>
 
-        <Text className="mb-2 mt-5 text-[10px] font-semibold text-muted">Preview</Text>
+        <Text className="mb-2 mt-5 text-xs font-semibold text-muted">Preview</Text>
         <View
           className={`${darkPreview ? 'bg-[#111126]' : 'bg-white'} rounded-control border border-border p-3`}
         >
@@ -226,14 +232,14 @@ export function AppearanceScreen() {
             <Text className={`${textClass} ${darkPreview ? 'text-[#15142C]' : 'text-ink'}`}>
               Uwaci, explique-moi comment je peux kobanda business na $200.
             </Text>
-            <Text className="mt-1 text-right text-[8px] text-muted">9:41 AM ✓✓</Text>
+            <Text className="mt-1 text-right text-xs text-muted">9:41 AM ✓✓</Text>
           </View>
           <View
             className={`mt-2 max-w-[85%] ${bubbleClass} border border-border bg-surface px-3 py-2`}
           >
             <View className="mb-1 flex-row items-center">
               <UwaciLogo compact />
-              <Text className="ml-auto text-[8px] text-muted">◖</Text>
+              <Text className="ml-auto text-xs text-muted">◖</Text>
             </View>
             <Text
               className={`${textClass} ${darkPreview ? 'text-white' : settings.increaseContrast ? 'font-medium text-black' : 'text-ink'}`}

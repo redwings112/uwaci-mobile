@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getLanguage } from '@/core/constants/languages';
+import { ensureAuthSession } from '@/core/auth/authSession';
 import { mapApiError } from '@/core/errors/mapApiError';
 import { speechService } from '@/core/speech/speechService';
 import { useSubmitFeedbackMutation } from '@/features/feedback/api/feedbackApi';
@@ -60,6 +61,10 @@ const suggestions = [
   'Strategies to find customers',
 ];
 
+function isDraftConversation(value: string): boolean {
+  return value === 'new' || value.startsWith('new-');
+}
+
 export function ConversationScreen({
   conversationId,
   initialText,
@@ -88,9 +93,9 @@ export function ConversationScreen({
     key: 0,
   });
   const initialActionHandled = useRef(false);
-  const isLocalConversation = conversationId.startsWith('new-');
+  const isLocalConversation = isDraftConversation(conversationId);
   const serverConversationId =
-    activeConversationId && !activeConversationId.startsWith('new-')
+    activeConversationId && !isDraftConversation(activeConversationId)
       ? activeConversationId
       : undefined;
   const remoteConversation = useGetConversationQuery(conversationId, { skip: isLocalConversation });
@@ -153,6 +158,15 @@ export function ConversationScreen({
         dispatch(requestFailed('Check your connection and try again.'));
         return;
       }
+      try {
+        await ensureAuthSession();
+      } catch {
+        router.push({
+          pathname: '/(auth)/sign-in',
+          params: { next: 'text', conversationId },
+        });
+        return;
+      }
       const localMessageId = `local-${Date.now()}`;
       dispatch(requestStarted());
       dispatch(
@@ -175,7 +189,16 @@ export function ConversationScreen({
         dispatch(requestFailed(mapApiError(error).message));
       }
     },
-    [acceptResult, dispatch, language, offline, sendTextQuery, serverConversationId],
+    [
+      acceptResult,
+      conversationId,
+      dispatch,
+      language,
+      offline,
+      router,
+      sendTextQuery,
+      serverConversationId,
+    ],
   );
 
   const handleMicrophone = async () => {
@@ -187,6 +210,15 @@ export function ConversationScreen({
     if (recorder.status !== 'recording') {
       if (offline) {
         dispatch(requestFailed('You are offline. Type a draft or reconnect to send.'));
+        return;
+      }
+      try {
+        await ensureAuthSession();
+      } catch {
+        router.push({
+          pathname: '/(auth)/sign-in',
+          params: { next: 'voice', conversationId },
+        });
         return;
       }
       dispatch(requestErrorCleared());
@@ -228,7 +260,7 @@ export function ConversationScreen({
     dispatch(voiceReset());
     router.replace({
       pathname: '/(app)/conversation/[conversationId]',
-      params: { conversationId: `new-${Date.now()}`, focusComposer: 'true' },
+      params: { conversationId: 'new', focusComposer: 'true' },
     });
   };
 
@@ -248,14 +280,14 @@ export function ConversationScreen({
 
   const busy = request.status === 'sending' || voiceQuery.isLoading;
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <AppHeader onMenu={() => router.push('/(app)/profile')} />
       <View className="flex-row items-center justify-between px-3 pb-2">
         <Pressable
           className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
           onPress={() => setShowLanguage((value) => !value)}
         >
-          <Text className="text-[9px] font-semibold text-brand">
+          <Text className="text-xs font-semibold text-brand">
             ◎ Auto-detect · {getLanguage(language).nativeLabel} ⌄
           </Text>
         </Pressable>
@@ -263,7 +295,7 @@ export function ConversationScreen({
           className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
           onPress={startNewConversation}
         >
-          <Text className="text-[9px] font-semibold text-brand">▢ New chat</Text>
+          <Text className="text-xs font-semibold text-brand">▢ New chat</Text>
         </Pressable>
       </View>
       {showLanguage ? (
@@ -306,9 +338,9 @@ export function ConversationScreen({
           <StatusBanner title="Spoken response unavailable" message={speechNotice} />
         </View>
       ) : null}
-      {request.errorMessage ? (
+      {request.errorMessage || recorder.errorMessage ? (
         <View className="px-3">
-          <ErrorState message={request.errorMessage} />
+          <ErrorState message={request.errorMessage ?? recorder.errorMessage ?? 'Voice failed.'} />
         </View>
       ) : null}
       {recoveryTranscript ? (
@@ -332,7 +364,7 @@ export function ConversationScreen({
       {recorder.status === 'recording' ? (
         <SurfaceCard className="mx-3 mb-2 items-center p-2">
           <RecordingIndicator durationMillis={recorder.durationMillis} />
-          <Text className="mt-1 text-[9px] text-muted">
+          <Text className="mt-1 text-xs text-muted">
             Tap the microphone again to stop and ask Uwaci.
           </Text>
         </SurfaceCard>
@@ -346,9 +378,9 @@ export function ConversationScreen({
       {messages.some((message) => message.role === 'assistant') ? (
         <View className="pb-1">
           <View className="flex-row items-center justify-between px-3">
-            <Text className="text-[9px] font-semibold text-muted">Suggestions</Text>
+            <Text className="text-xs font-semibold text-muted">Suggestions</Text>
             <Pressable onPress={() => setFeedbackVisible(true)}>
-              <Text className="text-[9px] text-muted">Why these? ⓘ</Text>
+              <Text className="text-xs text-muted">Why these? ⓘ</Text>
             </Pressable>
           </View>
           <ScrollView
@@ -363,7 +395,7 @@ export function ConversationScreen({
                 disabled={busy}
                 onPress={() => void sendText(suggestion)}
               >
-                <Text className="text-[9px] text-ink">{suggestion}</Text>
+                <Text className="text-xs text-ink dark:text-white">{suggestion}</Text>
               </Pressable>
             ))}
           </ScrollView>

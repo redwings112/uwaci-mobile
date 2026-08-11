@@ -76,7 +76,10 @@ export async function listHistory(): Promise<HistoryEntry[]> {
 
 export async function recordHistory(entry: HistoryEntry): Promise<void> {
   const data = await readLibrary();
-  const next = [entry, ...data.history.filter((item) => item.conversationId !== entry.conversationId)];
+  const next = [
+    entry,
+    ...data.history.filter((item) => item.conversationId !== entry.conversationId),
+  ];
   await writeLibrary({ ...data, history: next.slice(0, 50) });
 }
 
