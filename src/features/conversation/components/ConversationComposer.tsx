@@ -1,20 +1,26 @@
-import { useState } from 'react';
-import { TextInput, View } from 'react-native';
-
-import { Button } from '@/shared/components/Button/Button';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 interface ConversationComposerProps {
   onSend: (text: string) => Promise<void>;
+  onMicrophone?: () => void;
   disabled?: boolean;
   initialValue?: string;
+  autoFocus?: boolean;
 }
 
 export function ConversationComposer({
   onSend,
+  onMicrophone,
   disabled = false,
   initialValue = '',
+  autoFocus = false,
 }: ConversationComposerProps) {
   const [value, setValue] = useState(initialValue);
+  const input = useRef<TextInput>(null);
+  useEffect(() => {
+    if (autoFocus) requestAnimationFrame(() => input.current?.focus());
+  }, [autoFocus]);
   const submit = async () => {
     const text = value.trim();
     if (!text) return;
@@ -22,27 +28,40 @@ export function ConversationComposer({
     setValue('');
   };
   return (
-    <View className="flex-row items-end gap-2 border-t border-border bg-surface px-4 py-3">
+    <View
+      className="mx-3 mb-2 flex-row items-center rounded-full border border-border bg-surface px-2 py-1.5"
+      style={{ elevation: 3 }}
+    >
+      <Pressable
+        accessibilityLabel="Ask by voice"
+        className="h-10 w-10 items-center justify-center"
+        disabled={disabled}
+        onPress={onMicrophone}
+      >
+        <Text className="text-xl text-brand">♩</Text>
+      </Pressable>
       <TextInput
+        ref={input}
         accessibilityLabel="Your question"
-        className="max-h-28 min-h-12 flex-1 rounded-control border border-border bg-canvas px-4 py-3 text-base text-ink"
+        className="max-h-24 min-h-10 flex-1 px-2 text-sm text-ink"
         editable={!disabled}
         multiline
         onChangeText={setValue}
         onSubmitEditing={() => void submit()}
-        placeholder="Ask a follow-up…"
-        placeholderTextColor="#657168"
+        placeholder="Ask anything, speak or type…"
+        placeholderTextColor="#777789"
         returnKeyType="send"
         value={value}
       />
-      <Button
+      <Text className="px-2 text-brand">▦</Text>
+      <Pressable
         accessibilityLabel="Send question"
-        className="h-12 px-4"
+        className={`h-10 w-10 items-center justify-center rounded-full ${value.trim() ? 'bg-brand' : 'bg-lavender'}`}
         disabled={disabled || !value.trim()}
         onPress={() => void submit()}
       >
-        Send
-      </Button>
+        <Text className={value.trim() ? 'text-white' : 'text-violet'}>➤</Text>
+      </Pressable>
     </View>
   );
 }

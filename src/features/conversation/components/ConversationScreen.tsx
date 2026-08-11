@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getLanguage } from '@/core/constants/languages';
 import { mapApiError } from '@/core/errors/mapApiError';
 import { speechService } from '@/core/speech/speechService';
-import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
 import { useSubmitFeedbackMutation } from '@/features/feedback/api/feedbackApi';
+import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
 import type { FeedbackCategory } from '@/features/feedback/types';
+import { LanguageSelector } from '@/features/language/components/LanguageSelector';
+import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
-import { AudioWaveform } from '@/features/voice/components/AudioWaveform';
-import { MicrophoneButton } from '@/features/voice/components/MicrophoneButton';
 import { RecordingIndicator } from '@/features/voice/components/RecordingIndicator';
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
 import { voiceReset, voiceStatusChanged } from '@/features/voice/state/voiceSlice';
+import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
-import { Button } from '@/shared/components/Button/Button';
-import { IconButton } from '@/shared/components/IconButton/IconButton';
 import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
+import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -49,12 +50,20 @@ interface ConversationScreenProps {
   conversationId: string;
   initialText?: string;
   startRecording?: boolean;
+  focusComposer?: boolean;
 }
+
+const suggestions = [
+  'Business ideas with a small budget',
+  'How should I set my prices?',
+  'Strategies to find customers',
+];
 
 export function ConversationScreen({
   conversationId,
   initialText,
   startRecording = false,
+  focusComposer = false,
 }: ConversationScreenProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -70,6 +79,7 @@ export function ConversationScreen({
   const [sendTextQuery] = useSendTextQueryMutation();
   const [submitFeedback, feedbackResult] = useSubmitFeedbackMutation();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
   const [recoveryTranscript, setRecoveryTranscript] = useState<string | null>(null);
   const [speechNotice, setSpeechNotice] = useState<string | null>(null);
   const [composerPrefill, setComposerPrefill] = useState<{ value: string; key: number }>({
@@ -83,6 +93,7 @@ export function ConversationScreen({
       ? activeConversationId
       : undefined;
   const remoteConversation = useGetConversationQuery(conversationId, { skip: isLocalConversation });
+  const offline = !network.isConnected || network.isInternetReachable === false;
 
   useEffect(() => {
     dispatch(conversationOpened(conversationId));
@@ -98,16 +109,11 @@ export function ConversationScreen({
   const acceptResult = useCallback(
     async (result: QueryResult, optimisticMessageId?: string) => {
       dispatch(conversationOpened(result.conversationId));
-      if (optimisticMessageId) {
+      if (optimisticMessageId)
         dispatch(
-          messageReconciled({
-            optimisticId: optimisticMessageId,
-            message: result.userMessage,
-          }),
+          messageReconciled({ optimisticId: optimisticMessageId, message: result.userMessage }),
         );
-      } else {
-        dispatch(messageAdded(result.userMessage));
-      }
+      else dispatch(messageAdded(result.userMessage));
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
       setRecoveryTranscript(null);
@@ -120,7 +126,7 @@ export function ConversationScreen({
           onStopped: () => dispatch(voiceStatusChanged('idle')),
           onUnavailable: () => {
             setSpeechNotice(
-              `No ${getLanguage(language).label} device voice is installed. The answer remains available as text.`,
+              'No matching device voice is installed. The answer remains available as text.',
             );
             dispatch(voiceStatusChanged('idle'));
           },
@@ -129,16 +135,14 @@ export function ConversationScreen({
             dispatch(voiceStatusChanged('idle'));
           },
         });
-      } else {
-        dispatch(voiceStatusChanged('idle'));
-      }
+      } else dispatch(voiceStatusChanged('idle'));
     },
     [dispatch, language, voiceResponsesEnabled],
   );
 
   const sendText = useCallback(
     async (text: string) => {
-      if (!network.isConnected || network.isInternetReachable === false) {
+      if (offline) {
         dispatch(requestFailed('Check your connection and try again.'));
         return;
       }
@@ -164,15 +168,7 @@ export function ConversationScreen({
         dispatch(requestFailed(mapApiError(error).message));
       }
     },
-    [
-      acceptResult,
-      dispatch,
-      language,
-      network.isConnected,
-      network.isInternetReachable,
-      sendTextQuery,
-      serverConversationId,
-    ],
+    [acceptResult, dispatch, language, offline, sendTextQuery, serverConversationId],
   );
 
   const handleMicrophone = async () => {
@@ -182,7 +178,7 @@ export function ConversationScreen({
       return;
     }
     if (recorder.status !== 'recording') {
-      if (!network.isConnected || network.isInternetReachable === false) {
+      if (offline) {
         dispatch(requestFailed('You are offline. Type a draft or reconnect to send.'));
         return;
       }
@@ -193,10 +189,6 @@ export function ConversationScreen({
     }
     const recording = await recorder.stop();
     if (!recording) return;
-    if (!network.isConnected || network.isInternetReachable === false) {
-      dispatch(requestFailed('You are offline. Reconnect, then record your question again.'));
-      return;
-    }
     dispatch(requestStarted());
     try {
       const result = await voiceQuery.submit({
@@ -208,9 +200,8 @@ export function ConversationScreen({
     } catch (error: unknown) {
       const mapped = mapApiError(error);
       const transcript = mapped.details?.transcript;
-      if (mapped.code === 'TRANSCRIPTION_LOW_CONFIDENCE' && typeof transcript === 'string') {
+      if (mapped.code === 'TRANSCRIPTION_LOW_CONFIDENCE' && typeof transcript === 'string')
         setRecoveryTranscript(transcript);
-      }
       dispatch(requestFailed(mapped.message));
     }
   };
@@ -218,35 +209,20 @@ export function ConversationScreen({
   useEffect(() => {
     if (initialActionHandled.current) return;
     initialActionHandled.current = true;
-    let active = true;
-    if (initialText) {
+    if (initialText)
       queueMicrotask(() => {
-        if (active) void sendText(initialText);
+        void sendText(initialText);
       });
-    } else if (startRecording) {
-      if (!network.isConnected || network.isInternetReachable === false) {
-        dispatch(requestFailed('You are offline. Reconnect before recording a question.'));
-      } else {
-        void recorder.start();
-      }
-    }
-    return () => {
-      active = false;
-    };
-  }, [
-    dispatch,
-    initialText,
-    network.isConnected,
-    network.isInternetReachable,
-    recorder,
-    sendText,
-    startRecording,
-  ]);
+    else if (startRecording) void recorder.start();
+  }, [initialText, recorder, sendText, startRecording]);
 
   const startNewConversation = () => {
     dispatch(conversationReset());
     dispatch(voiceReset());
-    router.replace('/');
+    router.replace({
+      pathname: '/(app)/conversation/[conversationId]',
+      params: { conversationId: `new-${Date.now()}`, focusComposer: 'true' },
+    });
   };
 
   const sendFeedback = async (category: FeedbackCategory) => {
@@ -259,45 +235,55 @@ export function ConversationScreen({
       }).unwrap();
       setFeedbackVisible(false);
     } catch {
-      // The sheet stays open so the user can retry or dismiss it.
+      /* Keep the sheet open so the user can retry. */
     }
   };
 
   const busy = request.status === 'sending' || voiceQuery.isLoading;
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
-      <View className="flex-row items-center justify-between border-b border-border bg-canvas px-4 py-3">
-        <IconButton
-          icon="‹"
-          label="Back to home"
-          className="bg-surface"
-          onPress={() => router.back()}
-        />
-        <View className="items-center">
-          <Typography variant="label">Conversation</Typography>
-          <Typography variant="caption">{getLanguage(language).nativeLabel}</Typography>
-        </View>
-        <IconButton
-          icon="＋"
-          label="New conversation"
-          className="bg-surface"
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
+      <AppHeader onMenu={() => router.push('/(app)/profile')} />
+      <View className="flex-row items-center justify-between px-3 pb-2">
+        <Pressable
+          className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
+          onPress={() => setShowLanguage((value) => !value)}
+        >
+          <Text className="text-[9px] font-semibold text-brand">
+            ◎ Auto-detect · {getLanguage(language).nativeLabel} ⌄
+          </Text>
+        </Pressable>
+        <Pressable
+          className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
           onPress={startNewConversation}
-        />
+        >
+          <Text className="text-[9px] font-semibold text-brand">▢ New chat</Text>
+        </Pressable>
       </View>
+      {showLanguage ? (
+        <View className="z-10 px-3 pb-2">
+          <LanguageSelector
+            value={language}
+            onChange={(value) => {
+              dispatch(preferredLanguageChanged(value));
+              setShowLanguage(false);
+            }}
+          />
+        </View>
+      ) : null}
 
       <ConversationList messages={messages} />
 
-      {!network.isConnected || network.isInternetReachable === false ? (
-        <View className="px-4 pb-2">
+      {offline ? (
+        <View className="px-3 pb-2">
           <StatusBanner
             title="You’re offline"
-            message="Your conversation is still here. Reconnect before sending a voice or text question."
+            message="Reconnect before sending a voice or text question."
             variant="warning"
           />
         </View>
       ) : null}
       {auth.status === 'error' && auth.errorMessage ? (
-        <View className="px-4 pb-2">
+        <View className="px-3 pb-2">
           <StatusBanner
             title="Secure session unavailable"
             message={auth.errorMessage}
@@ -306,82 +292,82 @@ export function ConversationScreen({
         </View>
       ) : null}
       {speechNotice ? (
-        <View className="px-4 pb-2">
+        <View className="px-3 pb-2">
           <StatusBanner title="Spoken response unavailable" message={speechNotice} />
         </View>
       ) : null}
       {request.errorMessage ? (
-        <View className="px-4">
+        <View className="px-3">
           <ErrorState message={request.errorMessage} />
         </View>
       ) : null}
       {recoveryTranscript ? (
-        <View className="gap-3 px-4 pb-3">
+        <View className="px-3 pb-2">
           <TranscriptionPreview text={recoveryTranscript} />
-          <View className="flex-row gap-2">
-            <Button
-              className="flex-1"
-              variant="secondary"
-              onPress={() => {
-                dispatch(requestErrorCleared());
-                setRecoveryTranscript(null);
-                void recorder.start();
-              }}
-            >
-              Record again
-            </Button>
-            <Button
-              className="flex-1"
-              variant="secondary"
-              onPress={() => {
-                dispatch(requestErrorCleared());
-                setComposerPrefill((current) => ({
-                  value: recoveryTranscript,
-                  key: current.key + 1,
-                }));
-                setRecoveryTranscript(null);
-              }}
-            >
-              Type instead
-            </Button>
-          </View>
+          <Pressable
+            className="mt-2 min-h-10 items-center justify-center rounded-full bg-lavender"
+            onPress={() => {
+              setComposerPrefill((current) => ({
+                value: recoveryTranscript,
+                key: current.key + 1,
+              }));
+              setRecoveryTranscript(null);
+              dispatch(requestErrorCleared());
+            }}
+          >
+            <Text className="text-xs font-semibold text-brand">Edit transcript instead</Text>
+          </Pressable>
         </View>
       ) : null}
       {recorder.status === 'recording' ? (
-        <View className="px-4">
+        <SurfaceCard className="mx-3 mb-2 items-center p-2">
           <RecordingIndicator durationMillis={recorder.durationMillis} />
-          <AudioWaveform active />
-        </View>
+          <Text className="mt-1 text-[9px] text-muted">
+            Tap the microphone again to stop and ask Uwaci.
+          </Text>
+        </SurfaceCard>
       ) : null}
       {busy ? (
-        <Typography className="px-5 py-2 text-center text-muted" accessibilityLiveRegion="polite">
+        <Typography className="px-3 py-1 text-center text-muted" accessibilityLiveRegion="polite">
           Uwaci is thinking…
         </Typography>
       ) : null}
 
-      <View className="items-center border-t border-border bg-surface py-3">
-        <MicrophoneButton
-          status={recorder.status}
-          disabled={request.status === 'sending'}
-          onPress={() => void handleMicrophone()}
-        />
-      </View>
-      <ConversationComposer
-        key={composerPrefill.key}
-        disabled={busy || recorder.status === 'recording'}
-        initialValue={composerPrefill.value}
-        onSend={sendText}
-      />
       {messages.some((message) => message.role === 'assistant') ? (
-        <View className="bg-surface px-4 pb-3">
-          <IconButton
-            icon="♡"
-            label="Give feedback on the last answer"
-            className="bg-brand/10"
-            onPress={() => setFeedbackVisible(true)}
-          />
+        <View className="pb-1">
+          <View className="flex-row items-center justify-between px-3">
+            <Text className="text-[9px] font-semibold text-muted">Suggestions</Text>
+            <Pressable onPress={() => setFeedbackVisible(true)}>
+              <Text className="text-[9px] text-muted">Why these? ⓘ</Text>
+            </Pressable>
+          </View>
+          <ScrollView
+            horizontal
+            contentContainerClassName="gap-2 px-3 py-2"
+            showsHorizontalScrollIndicator={false}
+          >
+            {suggestions.map((suggestion) => (
+              <Pressable
+                key={suggestion}
+                className="min-h-10 max-w-40 justify-center rounded-control border border-border bg-surface px-3"
+                disabled={busy}
+                onPress={() => void sendText(suggestion)}
+              >
+                <Text className="text-[9px] text-ink">{suggestion}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
       ) : null}
+      <ConversationComposer
+        key={composerPrefill.key}
+        autoFocus={focusComposer}
+        disabled={busy || recorder.status === 'recording'}
+        initialValue={composerPrefill.value}
+        onMicrophone={() => void handleMicrophone()}
+        onSend={sendText}
+      />
+      <BottomTabBar active="chat" />
       <FeedbackSheet
         visible={feedbackVisible}
         submitting={feedbackResult.isLoading}

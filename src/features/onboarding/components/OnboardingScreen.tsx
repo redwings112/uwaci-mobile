@@ -1,152 +1,167 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import type { MicrophonePermission } from '@/core/audio/audioTypes';
-import { requestMicrophonePermission } from '@/core/audio/audioPermissions';
 import { secureStorage } from '@/core/storage/secureStorage';
 import { STORAGE_KEYS } from '@/core/storage/storageKeys';
+import { requestMicrophonePermission } from '@/core/audio/audioPermissions';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
-import { Button } from '@/shared/components/Button/Button';
-import { Screen } from '@/shared/components/Screen/Screen';
+import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
-type OnboardingStep = 'welcome' | 'language' | 'microphone';
+function ActionCard({
+  icon,
+  title,
+  subtitle,
+  tone,
+  onPress,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  tone: 'blue' | 'violet';
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className={`mb-3 flex-row items-center rounded-control border ${tone === 'blue' ? 'border-brand/60' : 'border-fuchsia/60'} bg-[#09091A] px-4 py-3`}
+      onPress={onPress}
+    >
+      <View
+        className={`h-11 w-11 items-center justify-center rounded-full ${tone === 'blue' ? 'bg-brand/20' : 'bg-fuchsia/20'}`}
+      >
+        <Text className={`text-xl ${tone === 'blue' ? 'text-brand' : 'text-fuchsia'}`}>{icon}</Text>
+      </View>
+      <View className="ml-3 flex-1">
+        <Text className="text-sm font-semibold text-white">{title}</Text>
+        <Text className="mt-0.5 text-[10px] text-white/60">{subtitle}</Text>
+      </View>
+      <Text className="text-xl text-violet">›</Text>
+    </Pressable>
+  );
+}
 
 export function OnboardingScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
-  const [step, setStep] = useState<OnboardingStep>('welcome');
-  const [permission, setPermission] = useState<MicrophonePermission>('undetermined');
-  const [requestingPermission, setRequestingPermission] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
 
   const finish = async () => {
     await secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
     router.replace('/(app)');
   };
 
-  const enableMicrophone = async () => {
-    setRequestingPermission(true);
-    try {
-      const result = await requestMicrophonePermission();
-      setPermission(result);
-      if (result === 'granted') await finish();
-    } finally {
-      setRequestingPermission(false);
-    }
+  const startVoice = async () => {
+    await secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
+    const permission = await requestMicrophonePermission();
+    router.replace({
+      pathname: '/(app)/conversation/[conversationId]',
+      params: {
+        conversationId: `new-${Date.now()}`,
+        startRecording: permission === 'granted' ? 'true' : 'false',
+      },
+    });
   };
 
-  return (
-    <Screen scroll className="justify-between pb-8">
-      <View>
-        <View className="mb-10 flex-row items-center justify-between">
-          <View className="h-14 w-14 items-center justify-center rounded-2xl bg-ink">
-            <Typography variant="title" className="text-white">
-              U
-            </Typography>
-          </View>
-          <Typography variant="caption">
-            {step === 'welcome' ? '1' : step === 'language' ? '2' : '3'} of 3
+  if (showLanguage) {
+    return (
+      <View className="flex-1 bg-canvas">
+        <AppHeader back onBack={() => setShowLanguage(false)} />
+        <View className="flex-1 px-5 pt-6">
+          <Typography variant="title">Choose your language</Typography>
+          <Typography className="mt-2 text-muted">
+            Your conversation language can change any time.
           </Typography>
-        </View>
-
-        {step === 'welcome' ? (
-          <View className="gap-5">
-            <Typography variant="label" className="text-brand">
-              YOUR VOICE, UNDERSTOOD
-            </Typography>
-            <Typography variant="display">Talk naturally. Uwaci will meet you there.</Typography>
-            <Typography className="text-lg leading-7 text-muted">
-              Ask by voice or text, mix languages, and continue the same conversation without
-              starting over.
-            </Typography>
-            <View className="gap-2 rounded-card border border-border bg-surface p-5">
-              <Typography variant="label">Your voice stays under your control</Typography>
-              <Typography className="text-muted">
-                Recordings are sent securely only when you choose to speak and are not silently kept
-                for training.
-              </Typography>
-            </View>
-          </View>
-        ) : null}
-
-        {step === 'language' ? (
-          <View className="gap-5">
-            <Typography variant="label" className="text-brand">
-              CONVERSATION LANGUAGE
-            </Typography>
-            <Typography variant="display">Choose a starting language.</Typography>
-            <Typography className="text-lg leading-7 text-muted">
-              This guides the response, but you can still switch or mix languages naturally.
-            </Typography>
+          <View className="mt-6">
             <LanguageSelector
               value={language}
               onChange={(value) => dispatch(preferredLanguageChanged(value))}
             />
-            <Typography variant="caption">
-              Lingala and Swahili transcription and device voices are experimental for this MVP.
-            </Typography>
           </View>
-        ) : null}
+          <Pressable
+            className="mt-8 min-h-12 items-center justify-center rounded-control bg-brand"
+            onPress={() => setShowLanguage(false)}
+          >
+            <Text className="font-semibold text-white">Continue</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
-        {step === 'microphone' ? (
-          <View className="gap-5">
-            <View className="h-28 w-28 items-center justify-center self-center rounded-full bg-brand/10">
-              <View className="h-20 w-20 items-center justify-center rounded-full bg-brand">
-                <Typography className="text-4xl text-white">●</Typography>
-              </View>
-            </View>
-            <Typography variant="display" className="text-center">
-              Speak only when you choose.
-            </Typography>
-            <Typography className="text-center text-lg leading-7 text-muted">
-              Uwaci needs microphone access to record a question. You can always type instead.
-            </Typography>
-            {permission === 'denied' ? (
-              <View
-                className="rounded-card border border-danger bg-red-50 p-4"
-                accessibilityRole="alert"
-              >
-                <Typography variant="label" className="text-danger">
-                  Microphone permission is blocked
-                </Typography>
-                <Typography className="mt-1 text-muted">
-                  You can continue with text and enable microphone access later in Android settings.
-                </Typography>
-              </View>
-            ) : null}
+  return (
+    <View className="flex-1 bg-[#01020A] px-4">
+      <View className="flex-1 justify-between pb-5 pt-12">
+        <View className="items-center">
+          <View className="h-40 w-40 items-center justify-center">
+            <View className="absolute h-32 w-32 rounded-full border-2 border-brand/40" />
+            <View className="absolute h-24 w-24 rounded-full border border-fuchsia/50" />
+            <Text className="text-8xl font-bold text-brand">U</Text>
+            <View className="absolute top-1 h-5 w-5 rounded-full bg-accent" />
           </View>
-        ) : null}
-      </View>
+          <UwaciLogo dark />
+          <Text className="mt-2 text-[9px] font-semibold tracking-[3px] text-accent">
+            KNOWLEDGE FOR HUMANITY
+          </Text>
+          <Text className="mt-8 text-center text-xl font-semibold text-white">
+            Welcome to <Text className="text-violet">Uwaci</Text>
+          </Text>
+          <Text className="mt-2 text-center text-[13px] leading-5 text-white/80">
+            Digitize, update, and use{`\n`}your realities on your own terms.
+          </Text>
+        </View>
 
-      <View className="mt-12 gap-3">
-        {step === 'welcome' ? <Button onPress={() => setStep('language')}>Continue</Button> : null}
-        {step === 'language' ? (
-          <>
-            <Button onPress={() => setStep('microphone')}>Use {language.toUpperCase()}</Button>
-            <Button variant="ghost" onPress={() => setStep('welcome')}>
-              Back
-            </Button>
-          </>
-        ) : null}
-        {step === 'microphone' ? (
-          <>
-            <Button loading={requestingPermission} onPress={() => void enableMicrophone()}>
-              Enable microphone
-            </Button>
-            <Button variant="secondary" onPress={() => void finish()}>
-              Not now — I’ll type
-            </Button>
-            <Button variant="ghost" onPress={() => setStep('language')}>
-              Back
-            </Button>
-          </>
-        ) : null}
+        <View>
+          <ActionCard
+            icon="◌"
+            title="Speak to Uwaci"
+            subtitle="Tap and start speaking"
+            tone="blue"
+            onPress={() => void startVoice()}
+          />
+          <ActionCard
+            icon="▦"
+            title="Type to Uwaci"
+            subtitle="Chat using text"
+            tone="violet"
+            onPress={() => void finish()}
+          />
+          <View className="my-2 flex-row items-center justify-center">
+            <View className="h-px flex-1 bg-white/10" />
+            <Text className="mx-3 text-[10px] text-white/50">OR</Text>
+            <View className="h-px flex-1 bg-white/10" />
+          </View>
+          <View className="flex-row items-center justify-center">
+            <Pressable
+              className="min-h-12 flex-1 items-center justify-center"
+              onPress={() => router.push('/(auth)/sign-in')}
+            >
+              <Text className="text-xs text-white">♙ Sign In</Text>
+            </Pressable>
+            <View className="h-6 w-px bg-white/20" />
+            <Pressable
+              className="min-h-12 flex-1 items-center justify-center"
+              onPress={() => router.push('/(auth)/sign-up')}
+            >
+              <Text className="text-xs text-white">♙ Create Account</Text>
+            </Pressable>
+          </View>
+          <Text className="mt-2 text-center text-[9px] text-white/50">
+            By continuing, you agree to our{`\n`}
+            <Text className="text-brand">Terms of Service</Text> and{' '}
+            <Text className="text-violet">Privacy Policy</Text>
+          </Text>
+          <Pressable className="mt-3 self-center" onPress={() => setShowLanguage(true)}>
+            <Text className="text-[10px] text-white/50">Language: {language.toUpperCase()}</Text>
+          </Pressable>
+        </View>
       </View>
-    </Screen>
+    </View>
   );
 }

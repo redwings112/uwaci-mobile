@@ -10,14 +10,14 @@ export function ConversationList({ messages }: { messages: ConversationMessage[]
   return (
     <FlatList
       className="flex-1"
-      contentContainerClassName="grow px-5 py-4"
+      contentContainerClassName="grow px-3 py-3"
       data={messages}
       keyExtractor={(message) => message.id}
       keyboardShouldPersistTaps="handled"
       ListEmptyComponent={
         <EmptyState
-          title="Start a conversation"
-          message="Speak or type a question. You can use more than one language."
+          title="Ask anything"
+          message="Speak or type naturally. Uwaci keeps voice and text in one conversation."
         />
       }
       renderItem={({ item }) =>

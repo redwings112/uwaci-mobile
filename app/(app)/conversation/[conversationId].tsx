@@ -11,12 +11,14 @@ export default function ConversationRoute() {
     conversationId: string;
     initialText?: string;
     startRecording?: string;
+    focusComposer?: string;
   }>();
   return (
     <ConversationScreen
       conversationId={first(params.conversationId) ?? 'new'}
       {...(first(params.initialText) ? { initialText: first(params.initialText)! } : {})}
       startRecording={first(params.startRecording) === 'true'}
+      focusComposer={first(params.focusComposer) === 'true'}
     />
   );
 }

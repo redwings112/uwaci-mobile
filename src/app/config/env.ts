@@ -4,7 +4,7 @@ const optionalUrl = z.union([z.literal(''), z.string().url()]).default('');
 
 const envSchema = z.object({
   appEnv: z.enum(['development', 'preview', 'production', 'test']).default('development'),
-  apiBaseUrl: z.string().url().default('http://localhost:8000'),
+  apiBaseUrl: z.string().url().default('https://uwaci-backend.vercel.app'),
   supabaseUrl: optionalUrl,
   supabaseAnonKey: z.string().default(''),
 });

@@ -8,7 +8,11 @@ import {
   preferredLanguageChanged,
   uiLanguageChanged,
 } from '@/features/language/state/languageSlice';
-import { voiceResponsesChanged } from '@/features/settings/state/settingsSlice';
+import {
+  appearancePreferencesHydrated,
+  type SettingsState,
+  voiceResponsesChanged,
+} from '@/features/settings/state/settingsSlice';
 import { useAppDispatch } from '@/store/hooks';
 
 export function PreferencesProvider({ children }: PropsWithChildren) {
@@ -20,8 +24,9 @@ export function PreferencesProvider({ children }: PropsWithChildren) {
       secureStorage.get(STORAGE_KEYS.preferredLanguage),
       secureStorage.get(STORAGE_KEYS.uiLanguage),
       secureStorage.get(STORAGE_KEYS.voiceResponse),
+      secureStorage.get(STORAGE_KEYS.appearance),
     ])
-      .then(([preferredLanguage, uiLanguage, voiceResponse]) => {
+      .then(([preferredLanguage, uiLanguage, voiceResponse, appearance]) => {
         if (!active) return;
         if (isUwaciLanguage(preferredLanguage)) {
           dispatch(preferredLanguageChanged(preferredLanguage));
@@ -31,6 +36,15 @@ export function PreferencesProvider({ children }: PropsWithChildren) {
         }
         if (voiceResponse === 'true' || voiceResponse === 'false') {
           dispatch(voiceResponsesChanged(voiceResponse === 'true'));
+        }
+        if (appearance) {
+          try {
+            dispatch(
+              appearancePreferencesHydrated(JSON.parse(appearance) as Partial<SettingsState>),
+            );
+          } catch {
+            // Invalid appearance data is ignored and replaced the next time a preference changes.
+          }
         }
       })
       .catch(() => {

@@ -6,7 +6,15 @@ import {
   preferredLanguageChanged,
   uiLanguageChanged,
 } from '@/features/language/state/languageSlice';
-import { voiceResponsesChanged } from '@/features/settings/state/settingsSlice';
+import {
+  accentColorChanged,
+  bubbleStyleChanged,
+  increaseContrastChanged,
+  reduceMotionChanged,
+  textSizeChanged,
+  themeModeChanged,
+  voiceResponsesChanged,
+} from '@/features/settings/state/settingsSlice';
 import { i18n } from '@/localization';
 
 export const preferencesListener = createListenerMiddleware();
@@ -17,6 +25,46 @@ preferencesListener.startListening({
     await secureStorage.set(STORAGE_KEYS.preferredLanguage, action.payload);
   },
 });
+
+const appearanceActions = [
+  themeModeChanged,
+  accentColorChanged,
+  textSizeChanged,
+  bubbleStyleChanged,
+  reduceMotionChanged,
+  increaseContrastChanged,
+] as const;
+
+for (const actionCreator of appearanceActions) {
+  preferencesListener.startListening({
+    actionCreator,
+    effect: async (_action, listenerApi) => {
+      const state = listenerApi.getState() as {
+        settings: {
+          themeMode: string;
+          accentColor: string;
+          textSize: string;
+          bubbleStyle: string;
+          reduceMotion: boolean;
+          increaseContrast: boolean;
+        };
+      };
+      const { themeMode, accentColor, textSize, bubbleStyle, reduceMotion, increaseContrast } =
+        state.settings;
+      await secureStorage.set(
+        STORAGE_KEYS.appearance,
+        JSON.stringify({
+          themeMode,
+          accentColor,
+          textSize,
+          bubbleStyle,
+          reduceMotion,
+          increaseContrast,
+        }),
+      );
+    },
+  });
+}
 
 preferencesListener.startListening({
   actionCreator: uiLanguageChanged,

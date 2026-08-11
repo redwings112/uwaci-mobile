@@ -1,144 +1,223 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, TextInput, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { mapApiError } from '@/core/errors/mapApiError';
+import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
+import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
+import { Typography } from '@/shared/components/Typography/Typography';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
-import { textQuerySchema } from '@/features/text_input/utils/textQuerySchema';
-import { MicrophoneButton } from '@/features/voice/components/MicrophoneButton';
-import { Screen } from '@/shared/components/Screen/Screen';
-import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
-import { Typography } from '@/shared/components/Typography/Typography';
+import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
+import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
+import {
+  conversationOpened,
+  conversationReset,
+  messageAdded,
+  requestFailed,
+  requestFinished,
+  requestStarted,
+} from '@/features/conversation/state/conversationSlice';
+import { voiceReset } from '@/features/voice/state/voiceSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+
+const waveform = [8, 14, 22, 30, 18, 38, 26, 16, 32, 21, 12, 25, 36, 17, 10];
 
 export function HomeScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
+  const requestError = useAppSelector((state) => state.conversation.errorMessage);
   const network = useAppSelector((state) => state.network);
-  const auth = useAppSelector((state) => state.auth);
-  const { t } = useTranslation();
-  const [text, setText] = useState('');
-  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const recorder = useVoiceRecorder();
+  const voiceQuery = useVoiceQuery();
+  const [showLanguage, setShowLanguage] = useState(false);
+  const recording = recorder.status === 'recording';
+  const busy =
+    ['processing_audio', 'uploading', 'transcribing', 'thinking'].includes(recorder.status) ||
+    voiceQuery.isLoading;
   const offline = !network.isConnected || network.isInternetReachable === false;
 
-  const openConversation = (params: { startRecording?: string; initialText?: string }) => {
-    router.push({
-      pathname: '/conversation/[conversationId]',
-      params: { conversationId: `new-${Date.now()}`, ...params },
-    });
-  };
-
-  const submitText = () => {
-    const result = textQuerySchema.safeParse(text);
-    if (!result.success) {
-      setValidationMessage(result.error.issues[0]?.message ?? 'Enter a question first.');
+  const begin = async () => {
+    if (offline) {
+      dispatch(requestFailed('You are offline. Reconnect before recording a question.'));
       return;
     }
-    setValidationMessage(null);
-    openConversation({ initialText: result.data });
+    await recorder.start();
+  };
+
+  const askUwaci = async () => {
+    if (!recording) {
+      await begin();
+      return;
+    }
+    const audio = await recorder.stop();
+    if (!audio) return;
+    dispatch(requestStarted());
+    try {
+      const result = await voiceQuery.submit({ uri: audio.uri, preferredLanguage: language });
+      dispatch(conversationReset());
+      dispatch(conversationOpened(result.conversationId));
+      dispatch(messageAdded(result.userMessage));
+      dispatch(messageAdded(result.assistantMessage));
+      dispatch(requestFinished());
+      router.push({
+        pathname: '/(app)/conversation/[conversationId]',
+        params: { conversationId: result.conversationId },
+      });
+    } catch (error: unknown) {
+      dispatch(requestFailed(mapApiError(error).message));
+    }
+  };
+
+  const cancel = async () => {
+    await recorder.cancel();
+    dispatch(voiceReset());
   };
 
   return (
-    <Screen scroll className="justify-between pb-8">
-      <View>
-        <View className="mb-8 flex-row items-center justify-between">
-          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-brand">
-            <Typography variant="title" className="text-white">
-              U
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
+      <AppHeader onMenu={() => router.push('/(app)/profile')} />
+      <View className="flex-1 px-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose conversation language"
+          className="mb-2 min-h-10 justify-center self-center rounded-full border border-border bg-surface px-4"
+          onPress={() => setShowLanguage((value) => !value)}
+        >
+          <Text className="text-[11px] font-semibold text-brand">
+            ◎ Auto-detect · {language.toUpperCase()} ⌄
+          </Text>
+        </Pressable>
+        {showLanguage ? (
+          <View className="z-10 mb-2">
+            <LanguageSelector
+              value={language}
+              onChange={(value) => {
+                dispatch(preferredLanguageChanged(value));
+                setShowLanguage(false);
+              }}
+            />
+          </View>
+        ) : null}
+
+        <View className="items-center pt-1">
+          <View className="mb-1 h-3 w-3 rounded-full bg-accent" />
+          <View className="h-40 w-40 items-center justify-center rounded-full border border-dashed border-brand/30">
+            <View className="h-32 w-32 items-center justify-center rounded-full border border-violet/30 bg-lavender">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={recording ? 'Recording in progress' : 'Start voice recording'}
+                className="h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-brand"
+                disabled={busy}
+                onPress={() => void (recording ? askUwaci() : begin())}
+              >
+                <View className="h-12 w-8 rounded-b-full border-b-4 border-l-4 border-r-4 border-white" />
+                <View className="mt-1 h-4 w-1 rounded-full bg-white" />
+                <View className="h-1 w-8 rounded-full bg-white" />
+                <View className="absolute bottom-4 flex-row items-end gap-0.5">
+                  {waveform.map((height, index) => (
+                    <View
+                      key={`${height}-${index}`}
+                      className="w-0.5 rounded-full bg-white/50"
+                      style={{ height: recording ? height / 2 : 3 }}
+                    />
+                  ))}
+                </View>
+              </Pressable>
+            </View>
+          </View>
+          <Typography variant="title" className="mt-3 text-center">
+            {busy ? 'Uwaci is thinking…' : recording ? "I'm listening…" : 'Ask Uwaci'}
+          </Typography>
+          <Typography variant="caption" className="mt-1 text-center">
+            {recording
+              ? "Speak clearly. I'll catch every word."
+              : 'Tap the microphone and speak naturally.'}
+          </Typography>
+        </View>
+
+        <SurfaceCard className="mt-4 min-h-28 p-4">
+          <Text className="text-[10px] font-semibold text-brand">⌁ Live transcription</Text>
+          <Typography className="mt-2 font-medium">
+            {recording
+              ? 'Audio is being captured securely…'
+              : 'Your transcript will appear after Uwaci processes the recording.'}
+          </Typography>
+          <View className="mt-3 flex-row items-center gap-1">
+            {[0, 1, 2, 3].map((dot) => (
+              <View
+                key={dot}
+                className={`h-1.5 w-1.5 rounded-full ${recording ? 'bg-brand' : 'bg-border'}`}
+              />
+            ))}
+            <Typography variant="caption" className="ml-2">
+              {recording ? `Listening · ${Math.floor(recorder.durationMillis / 1000)}s` : 'Ready'}
             </Typography>
           </View>
+        </SurfaceCard>
+
+        {requestError ? (
+          <Text className="mt-2 text-center text-xs text-danger">{requestError}</Text>
+        ) : null}
+        <View className="mt-2 flex-row items-start justify-around">
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-            className="min-h-12 justify-center rounded-full border border-border bg-surface px-4"
-            onPress={() => router.push('/settings')}
-          >
-            <Typography variant="label">Settings</Typography>
-          </Pressable>
-        </View>
-        <Typography variant="label" className="mb-3 text-brand">
-          {t('home.eyebrow')}
-        </Typography>
-        <Typography variant="display" className="mb-3">
-          {t('home.title')}
-        </Typography>
-        <Typography className="mb-8 text-lg leading-7 text-muted">{t('home.subtitle')}</Typography>
-        <Typography variant="label" className="mb-3">
-          Preferred language
-        </Typography>
-        <LanguageSelector
-          value={language}
-          onChange={(value) => dispatch(preferredLanguageChanged(value))}
-        />
-      </View>
-
-      <View className="my-10 items-center">
-        {offline ? (
-          <View className="mb-6 w-full">
-            <StatusBanner
-              title="You’re offline"
-              message="You can prepare a question now and send it after your connection returns."
-              variant="warning"
-            />
-          </View>
-        ) : null}
-        {auth.status === 'error' && auth.errorMessage ? (
-          <View className="mb-6 w-full">
-            <StatusBanner
-              title="Secure session unavailable"
-              message={auth.errorMessage}
-              variant="error"
-            />
-          </View>
-        ) : null}
-        <MicrophoneButton
-          status="idle"
-          onPress={() => openConversation({ startRecording: 'true' })}
-        />
-        <View className="mt-5 flex-row items-center gap-2">
-          <View className={`h-2 w-2 rounded-full ${offline ? 'bg-danger' : 'bg-green-600'}`} />
-          <Typography variant="caption">
-            {offline ? 'Waiting for a connection' : t('home.statusReady')}
-          </Typography>
-        </View>
-      </View>
-
-      <View>
-        <Typography variant="label" className="mb-2">
-          {t('home.typeInstead')}
-        </Typography>
-        <View className="flex-row items-center gap-2 rounded-card border border-border bg-surface p-2">
-          <TextInput
-            accessibilityLabel="Type your question"
-            className="min-h-12 flex-1 px-3 text-base text-ink"
-            onChangeText={(value) => {
-              setText(value);
-              if (validationMessage) setValidationMessage(null);
+            className="min-h-16 w-24 items-center justify-center"
+            onPress={() => {
+              void cancel();
+              router.push({
+                pathname: '/(app)/conversation/[conversationId]',
+                params: { conversationId: `new-${Date.now()}`, focusComposer: 'true' },
+              });
             }}
-            onSubmitEditing={submitText}
-            placeholder="How can Uwaci help?"
-            placeholderTextColor="#657168"
-            returnKeyType="send"
-            value={text}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Send question"
-            className="h-12 w-12 items-center justify-center rounded-full bg-brand"
-            onPress={submitText}
           >
-            <Typography className="text-xl text-white">→</Typography>
+            <View className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+              <Text className="text-brand">▦</Text>
+            </View>
+            <Text className="mt-1 text-[10px] text-ink">Type instead</Text>
+          </Pressable>
+          <Pressable
+            className="min-h-16 w-24 items-center justify-center"
+            disabled={!recording}
+            onPress={() => void cancel()}
+          >
+            <View className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+              <Text className="text-violet">×</Text>
+            </View>
+            <Text className="mt-1 text-[10px] text-ink">Cancel</Text>
+          </Pressable>
+          <Pressable
+            className="min-h-16 w-24 items-center justify-center"
+            onPress={() => void askUwaci()}
+          >
+            <View className="h-11 w-11 items-center justify-center rounded-full border-2 border-brand bg-lavender">
+              <Text className="text-xl text-violet">◉</Text>
+            </View>
+            <Text className="mt-1 text-[10px] text-ink">Ask Uwaci</Text>
+            <Text className="text-center text-[8px] text-violet">
+              {recording ? 'Stop and get my answer' : 'Start speaking'}
+            </Text>
           </Pressable>
         </View>
-        {validationMessage ? (
-          <Typography variant="caption" className="mt-2 text-danger" accessibilityRole="alert">
-            {validationMessage}
-          </Typography>
-        ) : null}
+
+        <Pressable
+          className="mb-2 mt-auto min-h-14 flex-row items-center rounded-control border border-border bg-surface px-3"
+          onPress={() => router.push('/(app)/profile')}
+        >
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-lavender">
+            <Text className="text-brand">♢</Text>
+          </View>
+          <View className="ml-3 flex-1">
+            <Text className="text-[11px] font-semibold text-ink">Your data is private</Text>
+            <Text className="text-[9px] text-muted">Uwaci protects your conversations.</Text>
+          </View>
+          <Text className="text-muted">›</Text>
+        </Pressable>
       </View>
-    </Screen>
+      <BottomTabBar active="chat" />
+    </SafeAreaView>
   );
 }

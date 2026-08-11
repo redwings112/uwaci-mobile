@@ -4,4 +4,5 @@ export const STORAGE_KEYS = {
   preferredLanguage: 'uwaci.preferences.language',
   uiLanguage: 'uwaci.preferences.ui-language',
   voiceResponse: 'uwaci.preferences.voice-response',
+  appearance: 'uwaci.preferences.appearance',
 } as const;
