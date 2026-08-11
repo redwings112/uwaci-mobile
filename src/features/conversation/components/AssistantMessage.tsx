@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 
 import { getLanguage } from '@/core/constants/languages';
+import {
+  isAnswerSaved,
+  toggleSavedAnswer,
+} from '@/features/library/storage/libraryStorage';
 import { speechService } from '@/core/speech/speechService';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
@@ -25,13 +29,41 @@ function parseContent(content: string) {
   return { intro: intro || content, steps };
 }
 
-export function AssistantMessage({ message }: { message: ConversationMessage }) {
+export function AssistantMessage({
+  message,
+  conversationId,
+}: {
+  message: ConversationMessage;
+  conversationId?: string;
+}) {
   const language = useAppSelector((state) => state.language.preferredConversationLanguage);
   const [expanded, setExpanded] = useState(false);
   const [rate, setRate] = useState(1);
   const [speaking, setSpeaking] = useState(false);
+  const [saved, setSaved] = useState(false);
   const parsed = parseContent(message.content);
   const visibleSteps = expanded ? parsed.steps : parsed.steps.slice(0, 3);
+
+  useEffect(() => {
+    let active = true;
+    void isAnswerSaved(message.id).then((value) => {
+      if (active) setSaved(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, [message.id]);
+
+  const save = async () => {
+    if (!conversationId) return;
+    const next = await toggleSavedAnswer({
+      conversationId,
+      messageId: message.id,
+      content: message.content,
+      createdAt: message.createdAt,
+    });
+    setSaved(next);
+  };
 
   const speak = async () => {
     if (speaking) {
@@ -75,6 +107,13 @@ export function AssistantMessage({ message }: { message: ConversationMessage }) 
             onPress={() => void Share.share({ message: message.content })}
           >
             <Text className="text-muted">□</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={saved ? 'Remove answer from saved' : 'Save answer'}
+            className="h-8 w-8 items-center justify-center rounded-full"
+            onPress={() => void save()}
+          >
+            <Text className={saved ? 'text-violet' : 'text-muted'}>{saved ? '★' : '☆'}</Text>
           </Pressable>
           <Pressable
             accessibilityLabel="More answer actions"

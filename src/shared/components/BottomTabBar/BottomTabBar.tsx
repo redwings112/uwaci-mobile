@@ -25,7 +25,7 @@ export function BottomTabBar({ active, profileMode = false }: BottomTabBarProps)
     : ['chat', 'history', 'saved', 'discover'];
   return (
     <View
-      className="flex-row border-t border-border bg-surface px-2 pt-1"
+      className="flex-row border-t border-border bg-surface px-2 pt-1 dark:border-white/10 dark:bg-[#17152C]"
       style={{ paddingBottom: Math.max(insets.bottom, 6) }}
     >
       {visibleTabs.map((key) => {

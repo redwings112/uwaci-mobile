@@ -22,7 +22,7 @@ export function AppHeader({
   onBack,
 }: AppHeaderProps) {
   return (
-    <View className="h-14 flex-row items-center justify-between px-4">
+    <View className="h-14 flex-row items-center justify-between bg-canvas px-4 dark:bg-[#111126]">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={back ? 'Go back' : 'Open menu'}
@@ -48,7 +48,7 @@ export function AppHeader({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={actionLabel}
-        className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface"
+        className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface dark:border-white/10 dark:bg-[#1B1933]"
         onPress={onAction}
       >
         {actionIcon === '✧' ? (

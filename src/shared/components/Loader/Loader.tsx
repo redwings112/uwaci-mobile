@@ -10,7 +10,7 @@ interface LoaderProps {
 export function Loader({ fullScreen = false, label = 'Loading' }: LoaderProps) {
   return (
     <View
-      className={`${fullScreen ? 'flex-1' : ''} items-center justify-center gap-3 bg-canvas p-6`}
+      className={`${fullScreen ? 'flex-1' : ''} items-center justify-center gap-3 bg-canvas p-6 dark:bg-[#111126]`}
       accessibilityRole="progressbar"
       accessibilityLabel={label}
     >

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,11 +22,12 @@ import {
   requestStarted,
 } from '@/features/conversation/state/conversationSlice';
 import { voiceReset } from '@/features/voice/state/voiceSlice';
+import { recordHistory } from '@/features/library/storage/libraryStorage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 const waveform = [8, 14, 22, 30, 18, 38, 26, 16, 32, 21, 12, 25, 36, 17, 10];
 
-export function HomeScreen() {
+export function HomeScreen({ startRecording = false }: { startRecording?: boolean }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
@@ -40,14 +41,21 @@ export function HomeScreen() {
     ['processing_audio', 'uploading', 'transcribing', 'thinking'].includes(recorder.status) ||
     voiceQuery.isLoading;
   const offline = !network.isConnected || network.isInternetReachable === false;
+  const initialActionHandled = useRef(false);
 
-  const begin = async () => {
+  const begin = useCallback(async () => {
     if (offline) {
       dispatch(requestFailed('You are offline. Reconnect before recording a question.'));
       return;
     }
     await recorder.start();
-  };
+  }, [dispatch, offline, recorder]);
+
+  useEffect(() => {
+    if (initialActionHandled.current || !startRecording) return;
+    initialActionHandled.current = true;
+    void begin();
+  }, [begin, startRecording]);
 
   const askUwaci = async () => {
     if (!recording) {
@@ -64,6 +72,12 @@ export function HomeScreen() {
       dispatch(messageAdded(result.userMessage));
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
+      void recordHistory({
+        conversationId: result.conversationId,
+        title: result.userMessage.content.slice(0, 48),
+        preview: result.assistantMessage.content.slice(0, 120),
+        updatedAt: result.assistantMessage.createdAt,
+      });
       router.push({
         pathname: '/(app)/conversation/[conversationId]',
         params: { conversationId: result.conversationId },
@@ -79,7 +93,7 @@ export function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
       <AppHeader onMenu={() => router.push('/(app)/profile')} />
       <View className="flex-1 px-3">
         <Pressable

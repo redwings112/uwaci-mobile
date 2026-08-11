@@ -20,7 +20,7 @@ export function UwaciLogo({ dark = false, compact = false }: UwaciLogoProps) {
         />
       </View>
       <Text
-        className={`${compact ? 'text-base' : 'text-2xl'} font-semibold ${dark ? 'text-white' : 'text-ink'}`}
+        className={`${compact ? 'text-base' : 'text-2xl'} font-semibold ${dark ? 'text-white' : 'text-ink dark:text-white'}`}
       >
         Uwaci
       </Text>

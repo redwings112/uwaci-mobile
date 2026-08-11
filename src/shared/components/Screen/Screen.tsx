@@ -26,7 +26,7 @@ export function Screen({
     </View>
   );
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       {content}
     </SafeAreaView>
   );

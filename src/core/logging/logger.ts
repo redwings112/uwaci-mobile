@@ -1,4 +1,4 @@
-import { appConfig } from '@/app/config/appConfig';
+import { appConfig } from '@/application/config/appConfig';
 
 type SafeMetadata = Record<string, string | number | boolean | null | undefined>;
 

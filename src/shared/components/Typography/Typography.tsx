@@ -9,11 +9,11 @@ interface TypographyProps extends TextProps {
 }
 
 const variants: Record<Variant, string> = {
-  display: 'text-4xl font-bold leading-tight text-ink',
-  title: 'text-2xl font-bold leading-8 text-ink',
-  body: 'text-base leading-6 text-ink',
-  label: 'text-sm font-semibold leading-5 text-ink',
-  caption: 'text-xs leading-4 text-muted',
+  display: 'text-4xl font-bold leading-tight text-ink dark:text-white',
+  title: 'text-2xl font-bold leading-8 text-ink dark:text-white',
+  body: 'text-base leading-6 text-ink dark:text-white',
+  label: 'text-sm font-semibold leading-5 text-ink dark:text-white',
+  caption: 'text-xs leading-4 text-muted dark:text-white/60',
 };
 
 export function Typography({

@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-import { appConfig } from '@/app/config/appConfig';
+import { appConfig } from '@/application/config/appConfig';
 
 import { type ApiResponse, unwrapApiResponse } from './apiTypes';
 import { prepareHeaders } from './prepareHeaders';

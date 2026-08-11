@@ -46,6 +46,7 @@ export function AppearanceScreen() {
   const dispatch = useAppDispatch();
   const settings = useAppSelector((state) => state.settings);
   const accent = accentHex[settings.accentColor];
+  const darkPreview = settings.themeMode === 'dark';
   const textClass =
     settings.textSize === 'small'
       ? 'text-xs'
@@ -60,7 +61,7 @@ export function AppearanceScreen() {
         : 'rounded-control';
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
       <AppHeader back onBack={() => router.back()} actionLabel="Appearance help" actionIcon="?" />
       <ScrollView
         className="flex-1"
@@ -219,10 +220,10 @@ export function AppearanceScreen() {
 
         <Text className="mb-2 mt-5 text-[10px] font-semibold text-muted">Preview</Text>
         <View
-          className={`${settings.themeMode === 'dark' ? 'bg-[#111126]' : 'bg-white'} rounded-control border border-border p-3`}
+          className={`${darkPreview ? 'bg-[#111126]' : 'bg-white'} rounded-control border border-border p-3`}
         >
           <View className={`max-w-[75%] self-end ${bubbleClass} bg-lavender px-3 py-2`}>
-            <Text className={`${textClass} text-ink`}>
+            <Text className={`${textClass} ${darkPreview ? 'text-[#15142C]' : 'text-ink'}`}>
               Uwaci, explique-moi comment je peux kobanda business na $200.
             </Text>
             <Text className="mt-1 text-right text-[8px] text-muted">9:41 AM ✓✓</Text>
@@ -235,7 +236,7 @@ export function AppearanceScreen() {
               <Text className="ml-auto text-[8px] text-muted">◖</Text>
             </View>
             <Text
-              className={`${textClass} ${settings.increaseContrast ? 'font-medium text-black' : 'text-ink'}`}
+              className={`${textClass} ${darkPreview ? 'text-white' : settings.increaseContrast ? 'font-medium text-black' : 'text-ink'}`}
             >
               Avec $200 à Kinshasa, tu peux commencer un petit business rentable et évoluer
               progressivement.

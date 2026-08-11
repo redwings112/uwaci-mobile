@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 
-import { bootstrapApp } from '@/app/bootstrap/bootstrapApp';
+import { bootstrapApp } from '@/application/bootstrap/bootstrapApp';
 import { Loader } from '@/shared/components/Loader/Loader';
 
 export function LocalizationProvider({ children }: PropsWithChildren) {

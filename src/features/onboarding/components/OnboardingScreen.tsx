@@ -4,7 +4,6 @@ import { Pressable, Text, View } from 'react-native';
 
 import { secureStorage } from '@/core/storage/secureStorage';
 import { STORAGE_KEYS } from '@/core/storage/storageKeys';
-import { requestMicrophonePermission } from '@/core/audio/audioPermissions';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
@@ -52,26 +51,17 @@ export function OnboardingScreen() {
   const language = useAppSelector(selectPreferredLanguage);
   const [showLanguage, setShowLanguage] = useState(false);
 
-  const finish = async () => {
-    await secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
-    router.replace('/(app)');
-  };
-
   const startVoice = async () => {
     await secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
-    const permission = await requestMicrophonePermission();
-    router.replace({
-      pathname: '/(app)/conversation/[conversationId]',
-      params: {
-        conversationId: `new-${Date.now()}`,
-        startRecording: permission === 'granted' ? 'true' : 'false',
-      },
-    });
+    // The permission prompt belongs to the listening experience. Keeping the
+    // route transition first gives users the same recovery path as returning
+    // users and lets a denial fall back to text without losing context.
+    router.replace({ pathname: '/(app)', params: { startRecording: 'true' } });
   };
 
   if (showLanguage) {
     return (
-      <View className="flex-1 bg-canvas">
+      <View className="flex-1 bg-canvas dark:bg-[#111126]">
         <AppHeader back onBack={() => setShowLanguage(false)} />
         <View className="flex-1 px-5 pt-6">
           <Typography variant="title">Choose your language</Typography>
@@ -130,7 +120,13 @@ export function OnboardingScreen() {
             title="Type to Uwaci"
             subtitle="Chat using text"
             tone="violet"
-            onPress={() => void finish()}
+            onPress={() => {
+              void secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
+              router.replace({
+                pathname: '/(app)/conversation/[conversationId]',
+                params: { conversationId: `new-${Date.now()}`, focusComposer: 'true' },
+              });
+            }}
           />
           <View className="my-2 flex-row items-center justify-center">
             <View className="h-px flex-1 bg-white/10" />

@@ -1,7 +1,7 @@
 # Folder structure
 
 - `app/`: Expo Router layouts and thin route adapters.
-- `src/app/`: startup, validated public configuration, and provider composition.
+- `src/application/`: startup, validated public configuration, and provider composition. This name intentionally avoids Expo Router's reserved `src/app` route root.
 - `src/core/api/`: one RTK Query base API, response envelopes, and auth headers.
 - `src/core/auth/`, `audio/`, `speech/`, `storage/`, `network/`: platform abstractions.
 - `src/core/errors/` and `logging/`: safe error mapping and privacy-aware diagnostics.

@@ -6,7 +6,13 @@ import type { ConversationMessage } from '../types';
 import { AssistantMessage } from './AssistantMessage';
 import { UserMessage } from './UserMessage';
 
-export function ConversationList({ messages }: { messages: ConversationMessage[] }) {
+export function ConversationList({
+  messages,
+  conversationId,
+}: {
+  messages: ConversationMessage[];
+  conversationId?: string;
+}) {
   return (
     <FlatList
       className="flex-1"
@@ -21,7 +27,11 @@ export function ConversationList({ messages }: { messages: ConversationMessage[]
         />
       }
       renderItem={({ item }) =>
-        item.role === 'user' ? <UserMessage message={item} /> : <AssistantMessage message={item} />
+        item.role === 'user' ? (
+          <UserMessage message={item} />
+        ) : (
+          <AssistantMessage message={item} conversationId={conversationId} />
+        )
       }
     />
   );

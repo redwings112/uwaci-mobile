@@ -90,7 +90,7 @@ The preview profile produces an internally distributed Android APK. Production b
 
 ```text
 app/                    Expo Router routes
-src/app/                bootstrap, config, and providers
+src/application/        bootstrap, config, and providers
 src/core/               API, auth, audio, speech, storage, network, errors
 src/features/           feature-owned UI, state, hooks, APIs, and types
 src/shared/             genuinely reusable primitives

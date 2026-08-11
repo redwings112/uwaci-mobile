@@ -46,7 +46,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-canvas dark:bg-[#111126]">
       <AppHeader back onBack={() => router.back()} actionIcon="?" actionLabel="Account help" />
       <View className="flex-1 px-5 pt-6">
         <Typography variant="title">{signUp ? 'Create your account' : 'Welcome back'}</Typography>
@@ -62,7 +62,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
-              className="mt-2 min-h-12 rounded-control border border-border bg-canvas px-4 text-ink"
+              className="mt-2 min-h-12 rounded-control border border-border bg-canvas px-4 text-ink dark:border-white/10 dark:bg-[#111126] dark:text-white"
               keyboardType="email-address"
               onChangeText={setEmail}
               placeholder="you@example.com"
@@ -75,7 +75,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <TextInput
               accessibilityLabel="Password"
               autoCapitalize="none"
-              className="mt-2 min-h-12 rounded-control border border-border bg-canvas px-4 text-ink"
+              className="mt-2 min-h-12 rounded-control border border-border bg-canvas px-4 text-ink dark:border-white/10 dark:bg-[#111126] dark:text-white"
               onChangeText={setPassword}
               placeholder="At least 6 characters"
               placeholderTextColor="#777789"

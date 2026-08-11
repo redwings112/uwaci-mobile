@@ -8,6 +8,7 @@ import { mapApiError } from '@/core/errors/mapApiError';
 import { speechService } from '@/core/speech/speechService';
 import { useSubmitFeedbackMutation } from '@/features/feedback/api/feedbackApi';
 import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
+import { recordHistory } from '@/features/library/storage/libraryStorage';
 import type { FeedbackCategory } from '@/features/feedback/types';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
@@ -116,6 +117,12 @@ export function ConversationScreen({
       else dispatch(messageAdded(result.userMessage));
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
+      void recordHistory({
+        conversationId: result.conversationId,
+        title: result.userMessage.content.slice(0, 48),
+        preview: result.assistantMessage.content.slice(0, 120),
+        updatedAt: result.assistantMessage.createdAt,
+      });
       setRecoveryTranscript(null);
       setSpeechNotice(null);
       if (voiceResponsesEnabled) {
@@ -241,7 +248,7 @@ export function ConversationScreen({
 
   const busy = request.status === 'sending' || voiceQuery.isLoading;
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
       <AppHeader onMenu={() => router.push('/(app)/profile')} />
       <View className="flex-row items-center justify-between px-3 pb-2">
         <Pressable
@@ -271,7 +278,10 @@ export function ConversationScreen({
         </View>
       ) : null}
 
-      <ConversationList messages={messages} />
+      <ConversationList
+        conversationId={serverConversationId ?? conversationId}
+        messages={messages}
+      />
 
       {offline ? (
         <View className="px-3 pb-2">

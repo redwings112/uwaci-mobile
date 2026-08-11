@@ -90,7 +90,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top']}>
       <AppHeader actionLabel="Notifications" actionIcon="♧" />
       <ScrollView
         className="flex-1"

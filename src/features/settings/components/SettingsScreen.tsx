@@ -20,6 +20,7 @@ export function SettingsScreen() {
   const language = useAppSelector(selectPreferredLanguage);
   const uiLanguage = useAppSelector(selectUiLanguage);
   const voiceEnabled = useAppSelector((state) => state.settings.voiceResponsesEnabled);
+  const themeMode = useAppSelector((state) => state.settings.themeMode);
   const { t } = useTranslation();
   return (
     <Screen scroll>
@@ -74,6 +75,20 @@ export function SettingsScreen() {
           }}
         />
       </View>
+      <Pressable
+        accessibilityRole="button"
+        className="mt-4 flex-row items-center justify-between rounded-card border border-border bg-surface p-5"
+        onPress={() => router.push('/(app)/appearance')}
+      >
+        <View className="flex-1">
+          <Typography variant="label">Appearance</Typography>
+          <Typography variant="caption" className="mt-1">
+            {themeMode[0]?.toUpperCase()}
+            {themeMode.slice(1)} mode, accent and display options
+          </Typography>
+        </View>
+        <Typography className="text-muted">›</Typography>
+      </Pressable>
       <View className="mt-8 gap-2">
         <Typography variant="label">{t('settings.aboutTitle')}</Typography>
         <Typography className="text-muted">{t('settings.about')}</Typography>

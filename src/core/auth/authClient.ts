@@ -2,7 +2,7 @@ import 'react-native-url-polyfill/auto';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import { env, hasSupabaseConfig } from '@/app/config/env';
+import { env, hasSupabaseConfig } from '@/application/config/env';
 import { secureStorage } from '@/core/storage/secureStorage';
 
 let client: SupabaseClient | null = null;
