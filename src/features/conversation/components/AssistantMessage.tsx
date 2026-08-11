@@ -1,30 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Share, Text, View } from 'react-native';
+import { Platform, Pressable, Share, Text, View } from 'react-native';
 
 import { getLanguage } from '@/core/constants/languages';
 import { isAnswerSaved, toggleSavedAnswer } from '@/features/library/storage/libraryStorage';
 import { speechService } from '@/core/speech/speechService';
+import { useSpeechPlayback } from '@/core/speech/useSpeechPlayback';
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
-import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppSelector } from '@/store/hooks';
 
 import type { ConversationMessage } from '../types';
+import { MarkdownMessage } from './MarkdownMessage';
 
-const colors = ['bg-violet', 'bg-brand', 'bg-cyan', 'bg-success', 'bg-orange'];
 const bars = [5, 10, 15, 8, 13, 18, 7, 12, 17, 9, 14, 6, 16, 11, 8, 15, 7, 12];
-
-function parseContent(content: string) {
-  const lines = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const steps = lines
-    .map((line) => line.match(/^(?:\d+[.)]|[-•])\s*(.+)$/)?.[1])
-    .filter((line): line is string => Boolean(line));
-  const intro = lines.filter((line) => !/^(?:\d+[.)]|[-•])\s+/.test(line)).join('\n');
-  return { intro: intro || content, steps };
-}
 
 export function AssistantMessage({
   message,
@@ -34,12 +23,11 @@ export function AssistantMessage({
   conversationId?: string;
 }) {
   const language = useAppSelector((state) => state.language.preferredConversationLanguage);
-  const [expanded, setExpanded] = useState(false);
   const [rate, setRate] = useState(1);
-  const [speaking, setSpeaking] = useState(false);
   const [saved, setSaved] = useState(false);
-  const parsed = parseContent(message.content);
-  const visibleSteps = expanded ? parsed.steps : parsed.steps.slice(0, 3);
+  const playback = useSpeechPlayback();
+  const activePlayback = playback.messageId === message.id && playback.status !== 'idle';
+  const paused = activePlayback && playback.status === 'paused';
 
   useEffect(() => {
     let active = true;
@@ -63,20 +51,27 @@ export function AssistantMessage({
   };
 
   const speak = async () => {
-    if (speaking) {
+    if (activePlayback) {
       await speechService.stop();
-      setSpeaking(false);
       return;
     }
-    setSpeaking(true);
-    await speechService.speak(message.content, {
-      language: getLanguage(language).speechLocale,
-      rate,
-      onDone: () => setSpeaking(false),
-      onStopped: () => setSpeaking(false),
-      onError: () => setSpeaking(false),
-      onUnavailable: () => setSpeaking(false),
-    });
+    await speechService.speak(
+      message.content,
+      {
+        language: getLanguage(language).speechLocale,
+        rate,
+      },
+      message.id,
+    );
+  };
+
+  const togglePlayback = async () => {
+    if (!activePlayback) {
+      await speak();
+      return;
+    }
+    if (Platform.OS === 'android') await speechService.stop();
+    else await (paused ? speechService.resume() : speechService.pause());
   };
 
   return (
@@ -92,83 +87,64 @@ export function AssistantMessage({
         </Text>
         <View className="ml-auto flex-row gap-1">
           <Pressable
-            accessibilityLabel="Read answer aloud"
-            className="h-8 w-8 items-center justify-center rounded-full"
+            accessibilityLabel={activePlayback ? 'Stop spoken answer' : 'Read answer aloud'}
+            className={`h-11 w-11 items-center justify-center rounded-full ${activePlayback ? 'bg-danger' : 'bg-lavender'}`}
             onPress={() => void speak()}
           >
-            <Text className="text-brand">{speaking ? '■' : '◖'}</Text>
+            <AppIcon
+              color={activePlayback ? '#FFFFFF' : '#215C45'}
+              name={activePlayback ? 'square' : 'volume'}
+              size={22}
+            />
           </Pressable>
           <Pressable
             accessibilityLabel="Share answer"
-            className="h-8 w-8 items-center justify-center rounded-full"
+            className="h-11 w-11 items-center justify-center rounded-full"
             onPress={() => void Share.share({ message: message.content })}
           >
-            <Text className="text-muted">□</Text>
+            <AppIcon color="#777789" name="share" size={23} />
           </Pressable>
           <Pressable
             accessibilityLabel={saved ? 'Remove answer from saved' : 'Save answer'}
-            className="h-8 w-8 items-center justify-center rounded-full"
+            className="h-11 w-11 items-center justify-center rounded-full"
             onPress={() => void save()}
           >
-            <Text className={saved ? 'text-violet' : 'text-muted'}>{saved ? '★' : '☆'}</Text>
+            <AppIcon color={saved ? '#6F45EF' : '#777789'} name="star" size={24} />
           </Pressable>
           <Pressable
             accessibilityLabel="More answer actions"
-            className="h-8 w-8 items-center justify-center rounded-full"
+            className="h-11 w-11 items-center justify-center rounded-full"
           >
-            <Text className="text-muted">•••</Text>
+            <AppIcon color="#777789" name="more" size={24} />
           </Pressable>
         </View>
       </View>
-      <Typography>{parsed.intro}</Typography>
-      {visibleSteps.length ? (
-        <View className="mt-3">
-          {visibleSteps.map((step, index) => {
-            const [title, ...rest] = step.split(':');
-            return (
-              <View key={`${step}-${index}`} className="min-h-12 flex-row">
-                <View className="mr-3 items-center">
-                  <View
-                    className={`h-5 w-5 items-center justify-center rounded-full ${colors[index % colors.length]}`}
-                  >
-                    <Text className="text-xs font-semibold text-white">{index + 1}</Text>
-                  </View>
-                  {index < visibleSteps.length - 1 ? (
-                    <View className="w-px flex-1 bg-border" />
-                  ) : null}
-                </View>
-                <View className="flex-1 pb-3">
-                  <Text className="text-sm font-semibold text-ink dark:text-white">{title}</Text>
-                  {rest.length ? (
-                    <Text className="mt-1 text-xs leading-4 text-muted dark:text-white/60">
-                      {rest.join(':').trim()}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
-          {parsed.steps.length > 3 ? (
-            <Pressable
-              className="min-h-9 justify-center"
-              onPress={() => setExpanded((value) => !value)}
-            >
-              <Text className="text-xs font-medium text-brand">
-                {expanded ? 'Show less  ⌃' : 'Show more  ⌄'}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      <MarkdownMessage content={message.content} />
       <View className="mt-2 flex-row items-center rounded-full border border-border bg-canvas px-2 py-1.5">
         <Pressable
-          accessibilityLabel="Play spoken answer"
-          className="h-7 w-7 items-center justify-center rounded-full bg-lavender"
-          onPress={() => void speak()}
+          accessibilityLabel={
+            paused
+              ? 'Resume spoken answer'
+              : activePlayback
+                ? Platform.OS === 'android'
+                  ? 'Stop spoken answer'
+                  : 'Pause spoken answer'
+                : 'Play spoken answer'
+          }
+          className="h-11 w-11 items-center justify-center rounded-full bg-lavender"
+          onPress={() => void togglePlayback()}
         >
-          <Text className="text-xs text-brand">{speaking ? '■' : '▶'}</Text>
+          <AppIcon
+            color="#215C45"
+            name={
+              paused || !activePlayback ? 'play' : Platform.OS === 'android' ? 'square' : 'pause'
+            }
+            size={24}
+          />
         </Pressable>
-        <Text className="ml-2 text-xs text-muted">Device voice</Text>
+        <Text className="ml-2 text-sm font-medium text-muted">
+          {paused ? 'Paused' : activePlayback ? 'Speaking' : 'Device voice'}
+        </Text>
         <View className="mx-2 flex-1 flex-row items-center gap-0.5">
           {bars.map((height, index) => (
             <View

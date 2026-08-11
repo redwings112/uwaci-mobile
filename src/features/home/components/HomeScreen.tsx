@@ -23,6 +23,7 @@ import {
   requestStarted,
 } from '@/features/conversation/state/conversationSlice';
 import { voiceReset } from '@/features/voice/state/voiceSlice';
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { recordHistory } from '@/features/library/storage/libraryStorage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -109,9 +110,13 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
           className="mb-3 min-h-12 justify-center self-center rounded-full border border-border bg-surface px-5"
           onPress={() => setShowLanguage((value) => !value)}
         >
-          <Text className="text-sm font-semibold text-brand">
-            ◎ Auto-detect · {language.toUpperCase()} ⌄
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon color="#215C45" name="globe" size={20} />
+            <Text className="text-sm font-semibold text-brand">
+              Auto-detect · {language.toUpperCase()}
+            </Text>
+            <AppIcon color="#215C45" name="chevronDown" size={18} />
+          </View>
         </Pressable>
         {showLanguage ? (
           <View className="z-10 mb-2">
@@ -136,9 +141,12 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
                 disabled={busy}
                 onPress={() => void (recording ? askUwaci() : begin())}
               >
-                <View className="h-12 w-8 rounded-b-full border-b-4 border-l-4 border-r-4 border-white" />
-                <View className="mt-1 h-4 w-1 rounded-full bg-white" />
-                <View className="h-1 w-8 rounded-full bg-white" />
+                <AppIcon
+                  color="#FFFFFF"
+                  name={recording ? 'square' : 'mic'}
+                  size={58}
+                  strokeWidth={2.2}
+                />
                 <View className="absolute bottom-4 flex-row items-end gap-0.5">
                   {waveform.map((height, index) => (
                     <View
@@ -166,7 +174,10 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
         </View>
 
         <SurfaceCard className="mt-5 min-h-32 p-5">
-          <Text className="text-xs font-semibold text-brand">⌁ Live transcription</Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon color="#215C45" name="audioLines" size={18} />
+            <Text className="text-xs font-semibold text-brand">Live transcription</Text>
+          </View>
           <Typography className="mt-2 font-medium">
             {recording
               ? 'Audio is being captured securely…'
@@ -202,7 +213,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
             }}
           >
             <View className="h-14 w-14 items-center justify-center rounded-full border border-border bg-surface">
-              <Text className="text-brand">▦</Text>
+              <AppIcon color="#215C45" name="keyboard" size={28} />
             </View>
             <Text className="mt-2 text-xs font-medium text-ink dark:text-white">Type instead</Text>
           </Pressable>
@@ -212,7 +223,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
             onPress={() => void cancel()}
           >
             <View className="h-14 w-14 items-center justify-center rounded-full border border-border bg-surface">
-              <Text className="text-violet">×</Text>
+              <AppIcon color="#6F45EF" name="x" size={29} />
             </View>
             <Text className="mt-2 text-xs font-medium text-ink dark:text-white">Cancel</Text>
           </Pressable>
@@ -221,7 +232,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
             onPress={() => void askUwaci()}
           >
             <View className="h-14 w-14 items-center justify-center rounded-full border-2 border-brand bg-lavender">
-              <Text className="text-xl text-violet">◉</Text>
+              <AppIcon color="#6F45EF" name={recording ? 'square' : 'mic'} size={28} />
             </View>
             <Text className="mt-2 text-xs font-medium text-ink dark:text-white">Ask Uwaci</Text>
             <Text className="mt-0.5 text-center text-xs text-violet">
@@ -235,7 +246,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
           onPress={() => router.push('/(app)/profile')}
         >
           <View className="h-9 w-9 items-center justify-center rounded-full bg-lavender">
-            <Text className="text-brand">♢</Text>
+            <AppIcon color="#215C45" name="shield" size={22} />
           </View>
           <View className="ml-3 flex-1">
             <Text className="text-sm font-semibold text-ink dark:text-white">
@@ -243,7 +254,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
             </Text>
             <Text className="mt-0.5 text-xs text-muted">Uwaci protects your conversations.</Text>
           </View>
-          <Text className="text-muted">›</Text>
+          <AppIcon color="#777789" name="chevronRight" size={22} />
         </Pressable>
       </View>
       <BottomTabBar active="chat" />

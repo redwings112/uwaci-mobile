@@ -11,25 +11,26 @@ import {
   toggleSavedAnswer,
 } from '@/features/library/storage/libraryStorage';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
 
 type LibraryTab = 'history' | 'saved' | 'discover';
 
-const discoverPrompts = [
+const discoverPrompts: { icon: AppIconName; title: string; prompt: string }[] = [
   {
-    icon: '✦',
+    icon: 'rocket',
     title: 'Start a business with what you have',
     prompt: 'Give me practical business ideas I can start with a small budget in my city.',
   },
   {
-    icon: '◎',
+    icon: 'lightbulb',
     title: 'Turn local knowledge into a plan',
     prompt: 'Help me turn a problem in my community into a simple step-by-step action plan.',
   },
   {
-    icon: '◫',
+    icon: 'graduationCap',
     title: 'Learn something in my language',
     prompt: 'Explain a useful digital skill simply and give me a short practice exercise.',
   },
@@ -113,7 +114,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
         {!loading && tab === 'history' && history.length === 0 ? (
           <SurfaceCard className="items-center p-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
-              <Text className="text-3xl text-brand">◷</Text>
+              <AppIcon color="#215C45" name="history" size={34} />
             </View>
             <Typography variant="title" className="mt-5 text-center">
               No conversations yet
@@ -132,7 +133,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
               >
                 <SurfaceCard className="mb-3 flex-row items-center p-4">
                   <View className="h-11 w-11 items-center justify-center rounded-full bg-lavender">
-                    <Text className="text-lg text-brand">◷</Text>
+                    <AppIcon color="#215C45" name="history" size={24} />
                   </View>
                   <View className="ml-3 flex-1">
                     <Text className="text-sm font-semibold text-ink" numberOfLines={1}>
@@ -144,7 +145,9 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                   </View>
                   <View className="ml-2 items-end">
                     <Text className="text-xs text-muted">{timeLabel(item.updatedAt)}</Text>
-                    <Text className="mt-2 text-muted">›</Text>
+                    <View className="mt-2">
+                      <AppIcon color="#777789" name="chevronRight" size={20} />
+                    </View>
                   </View>
                 </SurfaceCard>
               </Pressable>
@@ -154,7 +157,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
         {!loading && tab === 'saved' && saved.length === 0 ? (
           <SurfaceCard className="items-center p-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
-              <Text className="text-3xl text-violet">☆</Text>
+              <AppIcon color="#6F45EF" name="bookmark" size={34} />
             </View>
             <Typography variant="title" className="mt-5 text-center">
               Nothing saved yet
@@ -170,7 +173,10 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
               <SurfaceCard key={answer.id} className="mb-3 p-4">
                 <Pressable onPress={() => openConversation(answer.conversationId)}>
                   <View className="flex-row items-center">
-                    <Text className="text-xs font-semibold text-violet">★ Saved answer</Text>
+                    <View className="flex-row items-center gap-1.5">
+                      <AppIcon color="#6F45EF" name="star" size={18} />
+                      <Text className="text-xs font-semibold text-violet">Saved answer</Text>
+                    </View>
                     <Text className="ml-auto text-xs text-muted">
                       {timeLabel(answer.createdAt)}
                     </Text>
@@ -184,7 +190,10 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                   className="mt-3 min-h-9 justify-center self-end px-2"
                   onPress={() => void removeSaved(answer)}
                 >
-                  <Text className="text-xs font-semibold text-danger">Remove</Text>
+                  <View className="flex-row items-center gap-1.5">
+                    <AppIcon color="#D6455D" name="trash" size={18} />
+                    <Text className="text-xs font-semibold text-danger">Remove</Text>
+                  </View>
                 </Pressable>
               </SurfaceCard>
             ))
@@ -197,11 +206,11 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                   <View
                     className={`h-12 w-12 items-center justify-center rounded-full ${index === 0 ? 'bg-lavender' : index === 1 ? 'bg-cyan/10' : 'bg-[#FFF5DA]'}`}
                   >
-                    <Text
-                      className={`text-xl ${index === 0 ? 'text-violet' : index === 1 ? 'text-cyan' : 'text-orange'}`}
-                    >
-                      {item.icon}
-                    </Text>
+                    <AppIcon
+                      color={index === 0 ? '#6F45EF' : index === 1 ? '#10BFC5' : '#FFA51F'}
+                      name={item.icon}
+                      size={27}
+                    />
                   </View>
                   <View className="ml-3 flex-1">
                     <Text className="text-sm font-semibold text-ink">{item.title}</Text>
@@ -209,7 +218,9 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                       {item.prompt}
                     </Text>
                   </View>
-                  <Text className="ml-2 text-brand">›</Text>
+                  <View className="ml-2">
+                    <AppIcon color="#215C45" name="chevronRight" size={22} />
+                  </View>
                 </SurfaceCard>
               </Pressable>
             ))

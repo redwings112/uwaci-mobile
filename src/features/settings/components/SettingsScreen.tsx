@@ -10,6 +10,7 @@ import {
 import { selectPreferredLanguage, selectUiLanguage } from '@/features/language/state/selectors';
 import { voiceResponsesChanged } from '@/features/settings/state/settingsSlice';
 import { IconButton } from '@/shared/components/IconButton/IconButton';
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { Screen } from '@/shared/components/Screen/Screen';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -25,7 +26,12 @@ export function SettingsScreen() {
   return (
     <Screen scroll>
       <View className="mb-8 flex-row items-center gap-3">
-        <IconButton icon="‹" label="Go back" className="bg-surface" onPress={() => router.back()} />
+        <IconButton
+          icon="arrowLeft"
+          label="Go back"
+          className="bg-surface"
+          onPress={() => router.back()}
+        />
         <Typography variant="title">{t('settings.title')}</Typography>
       </View>
       <View className="gap-3 rounded-card border border-border bg-surface p-5">
@@ -87,7 +93,7 @@ export function SettingsScreen() {
             {themeMode.slice(1)} mode, accent and display options
           </Typography>
         </View>
-        <Typography className="text-muted">›</Typography>
+        <AppIcon color="#777789" name="chevronRight" size={22} />
       </Pressable>
       <View className="mt-8 gap-2">
         <Typography variant="label">{t('settings.aboutTitle')}</Typography>

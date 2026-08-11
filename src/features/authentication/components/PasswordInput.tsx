@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+
 interface PasswordInputProps {
   value: string;
   onChangeText: (value: string) => void;
@@ -31,10 +33,7 @@ export function PasswordInput({ value, onChangeText, mode }: PasswordInputProps)
         hitSlop={8}
         onPress={() => setVisible((current) => !current)}
       >
-        <View className="h-4 w-7 items-center justify-center rounded-full border-2 border-brand">
-          <View className="h-2 w-2 rounded-full bg-brand" />
-          {!visible ? <View className="absolute h-0.5 w-8 rotate-45 bg-brand" /> : null}
-        </View>
+        <AppIcon color="#215C45" name={visible ? 'eyeOff' : 'eye'} size={24} />
       </Pressable>
     </View>
   );

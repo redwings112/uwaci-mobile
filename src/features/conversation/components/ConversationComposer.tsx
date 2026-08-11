@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
+
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 
 interface ConversationComposerProps {
   onSend: (text: string) => Promise<void>;
@@ -38,7 +40,7 @@ export function ConversationComposer({
         disabled={disabled}
         onPress={onMicrophone}
       >
-        <Text className="text-xl text-brand">♩</Text>
+        <AppIcon color="#215C45" name="mic" size={27} />
       </Pressable>
       <TextInput
         ref={input}
@@ -53,14 +55,16 @@ export function ConversationComposer({
         returnKeyType="send"
         value={value}
       />
-      <Text className="px-2 text-brand">▦</Text>
+      <View className="px-1">
+        <AppIcon color="#777789" name="paperclip" size={23} />
+      </View>
       <Pressable
         accessibilityLabel="Send question"
         className={`h-10 w-10 items-center justify-center rounded-full ${value.trim() ? 'bg-brand' : 'bg-lavender'}`}
         disabled={disabled || !value.trim()}
         onPress={() => void submit()}
       >
-        <Text className={value.trim() ? 'text-white' : 'text-violet'}>➤</Text>
+        <AppIcon color={value.trim() ? '#FFFFFF' : '#6F45EF'} name="send" size={22} />
       </Pressable>
     </View>
   );

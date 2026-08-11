@@ -1,12 +1,13 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
 
 interface AppHeaderProps {
   onMenu?: () => void;
   onAction?: () => void;
   actionLabel?: string;
-  actionIcon?: string;
+  actionIcon?: AppIconName;
   dark?: boolean;
   back?: boolean;
   onBack?: () => void;
@@ -16,7 +17,7 @@ export function AppHeader({
   onMenu,
   onAction,
   actionLabel = 'Open assistant actions',
-  actionIcon = '✧',
+  actionIcon = 'sparkle',
   dark = false,
   back = false,
   onBack,
@@ -29,20 +30,11 @@ export function AppHeader({
         className="h-12 w-12 items-center justify-center"
         onPress={back ? onBack : onMenu}
       >
-        <View className="gap-1">
-          {back ? (
-            <>
-              <View className="h-0.5 w-4 rotate-[-45deg] bg-brand" />
-              <View className="h-0.5 w-4 rotate-[45deg] bg-brand" />
-            </>
-          ) : (
-            <>
-              <View className="h-0.5 w-4 bg-muted" />
-              <View className="h-0.5 w-4 bg-muted" />
-              <View className="h-0.5 w-4 bg-muted" />
-            </>
-          )}
-        </View>
+        <AppIcon
+          color={back ? '#215C45' : '#777789'}
+          name={back ? 'arrowLeft' : 'menu'}
+          size={28}
+        />
       </Pressable>
       <UwaciLogo compact dark={dark} />
       <Pressable
@@ -51,15 +43,7 @@ export function AppHeader({
         className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface dark:border-white/10 dark:bg-[#1B1933]"
         onPress={onAction}
       >
-        {actionIcon === '✧' ? (
-          <View className="h-7 w-7 items-center justify-center rounded-full bg-lavender">
-            <View className="h-2 w-2 rounded-full bg-brand" />
-            <View className="absolute h-5 w-0.5 bg-violet" />
-            <View className="absolute h-0.5 w-5 bg-violet" />
-          </View>
-        ) : (
-          <Text className="text-base text-brand">{actionIcon}</Text>
-        )}
+        <AppIcon color="#215C45" name={actionIcon} size={25} />
       </Pressable>
     </View>
   );

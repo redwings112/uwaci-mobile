@@ -15,6 +15,7 @@ import {
   type ThemeMode,
 } from '@/features/settings/state/settingsSlice';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
@@ -30,10 +31,10 @@ const accentHex: Record<AccentColor, string> = {
   coral: '#FB596A',
 };
 
-const themes: { value: ThemeMode; label: string; helper: string; icon: string }[] = [
-  { value: 'light', label: 'Light', helper: 'Default', icon: '☼' },
-  { value: 'dark', label: 'Dark', helper: 'Easy on the eyes', icon: '☾' },
-  { value: 'system', label: 'System', helper: 'Follow device', icon: '◑' },
+const themes: { value: ThemeMode; label: string; helper: string; icon: AppIconName }[] = [
+  { value: 'light', label: 'Light', helper: 'Default', icon: 'sun' },
+  { value: 'dark', label: 'Dark', helper: 'Easy on the eyes', icon: 'moon' },
+  { value: 'system', label: 'System', helper: 'Follow device', icon: 'monitor' },
 ];
 
 function cycle<T extends string>(current: T, values: readonly T[]): T {
@@ -62,7 +63,12 @@ export function AppearanceScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader back onBack={() => router.back()} actionLabel="Appearance help" actionIcon="?" />
+      <AppHeader
+        back
+        onBack={() => router.back()}
+        actionLabel="Appearance help"
+        actionIcon="help"
+      />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-3 pb-4"
@@ -87,9 +93,7 @@ export function AppearanceScreen() {
                 <View
                   className={`h-28 w-full rounded-lg border border-border p-3 ${dark ? 'bg-[#111126]' : 'bg-white'}`}
                 >
-                  <Text className={`text-xs ${dark ? 'text-white' : 'text-accent'}`}>
-                    {theme.icon}
-                  </Text>
+                  <AppIcon color={dark ? '#FFFFFF' : '#FFCC45'} name={theme.icon} size={19} />
                   <View
                     className={`mt-2 h-2 w-2/3 rounded-full ${dark ? 'bg-white/20' : 'bg-border'}`}
                   />
@@ -98,7 +102,7 @@ export function AppearanceScreen() {
                   />
                   {selected ? (
                     <View className="absolute right-1 top-1 h-4 w-4 items-center justify-center rounded-full bg-brand">
-                      <Text className="text-xs text-white">✓</Text>
+                      <AppIcon color="#FFFFFF" name="check" size={12} strokeWidth={3} />
                     </View>
                   ) : null}
                 </View>
@@ -130,7 +134,9 @@ export function AppearanceScreen() {
                   className="h-7 w-7 items-center justify-center rounded-full"
                   style={{ backgroundColor: accentHex[color] }}
                 >
-                  {selected ? <Text className="text-xs text-white">✓</Text> : null}
+                  {selected ? (
+                    <AppIcon color="#FFFFFF" name="check" size={14} strokeWidth={3} />
+                  ) : null}
                 </View>
               </Pressable>
             );
@@ -161,8 +167,9 @@ export function AppearanceScreen() {
             </View>
             <Text className="text-xs text-muted">
               {settings.textSize[0]?.toUpperCase()}
-              {settings.textSize.slice(1)} ›
+              {settings.textSize.slice(1)}
             </Text>
+            <AppIcon color="#777789" name="chevronRight" size={19} />
           </Pressable>
           <Pressable
             className="min-h-16 flex-row items-center border-t border-border px-4"
@@ -175,7 +182,7 @@ export function AppearanceScreen() {
             }
           >
             <View className="h-8 w-8 items-center justify-center rounded-full bg-lavender">
-              <Text className="text-brand">▤</Text>
+              <AppIcon color="#215C45" name="messageSquare" size={20} />
             </View>
             <View className="ml-3 flex-1">
               <Text className="text-sm font-semibold text-ink dark:text-white">
@@ -185,12 +192,13 @@ export function AppearanceScreen() {
             </View>
             <Text className="text-xs text-muted">
               {settings.bubbleStyle[0]?.toUpperCase()}
-              {settings.bubbleStyle.slice(1)} ›
+              {settings.bubbleStyle.slice(1)}
             </Text>
+            <AppIcon color="#777789" name="chevronRight" size={19} />
           </Pressable>
           <View className="min-h-16 flex-row items-center border-t border-border px-4">
             <View className="h-8 w-8 items-center justify-center rounded-full bg-lavender">
-              <Text className="text-brand">≋</Text>
+              <AppIcon color="#215C45" name="waves" size={20} />
             </View>
             <View className="ml-3 flex-1">
               <Text className="text-sm font-semibold text-ink dark:text-white">Reduce motion</Text>
@@ -206,7 +214,7 @@ export function AppearanceScreen() {
           </View>
           <View className="min-h-16 flex-row items-center border-t border-border px-4">
             <View className="h-8 w-8 items-center justify-center rounded-full bg-lavender">
-              <Text className="text-brand">◐</Text>
+              <AppIcon color="#215C45" name="contrast" size={20} />
             </View>
             <View className="ml-3 flex-1">
               <Text className="text-sm font-semibold text-ink dark:text-white">
@@ -239,7 +247,9 @@ export function AppearanceScreen() {
           >
             <View className="mb-1 flex-row items-center">
               <UwaciLogo compact />
-              <Text className="ml-auto text-xs text-muted">◖</Text>
+              <View className="ml-auto">
+                <AppIcon color="#777789" name="volume" size={20} />
+              </View>
             </View>
             <Text
               className={`${textClass} ${darkPreview ? 'text-white' : settings.increaseContrast ? 'font-medium text-black' : 'text-ink'}`}

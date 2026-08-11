@@ -10,6 +10,7 @@ import { STORAGE_KEYS } from '@/core/storage/storageKeys';
 import { signedOut } from '@/features/authentication/state/authSlice';
 import { getLanguage } from '@/core/constants/languages';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -19,30 +20,32 @@ interface ProfileIdentity {
   email: string;
 }
 
-const groups = [
+type ProfileRow = readonly [AppIconName, string, string, string];
+
+const groups: readonly { label: string; rows: readonly ProfileRow[] }[] = [
   {
     label: 'Account',
     rows: [
-      ['♙', 'Profile', 'View and edit your information', ''],
-      ['♢', 'Privacy & Security', 'Manage your data and privacy', ''],
-      ['▣', 'Subscription', 'Manage your plan and billing', ''],
-      ['◷', 'Usage', 'See your activity and daily limits', ''],
+      ['user', 'Profile', 'View and edit your information', ''],
+      ['lock', 'Privacy & Security', 'Manage your data and privacy', ''],
+      ['creditCard', 'Subscription', 'Manage your plan and billing', ''],
+      ['activity', 'Usage', 'See your activity and daily limits', ''],
     ],
   },
   {
     label: 'Preferences',
     rows: [
-      ['◎', 'Language', 'Conversation language', 'language'],
-      ['☼', 'Appearance', 'Choose how Uwaci looks and feels', 'appearance'],
-      ['◖', 'Voice & Speech', 'Select voice and speech speed', 'voice'],
-      ['♧', 'Notifications', 'Manage your alerts and updates', ''],
+      ['globe', 'Language', 'Conversation language', 'language'],
+      ['palette', 'Appearance', 'Choose how Uwaci looks and feels', 'appearance'],
+      ['audioLines', 'Voice & Speech', 'Select voice and speech speed', 'voice'],
+      ['bell', 'Notifications', 'Manage your alerts and updates', ''],
     ],
   },
   {
     label: 'More',
     rows: [
-      ['?', 'Help & Support', 'FAQs, guides and contact us', ''],
-      ['ⓘ', 'About Uwaci', 'Version 1.0.0', ''],
+      ['help', 'Help & Support', 'FAQs, guides and contact us', ''],
+      ['info', 'About Uwaci', 'Version 1.0.0', ''],
     ],
   },
 ] as const;
@@ -91,7 +94,7 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader actionLabel="Notifications" actionIcon="♧" />
+      <AppHeader actionLabel="Notifications" actionIcon="bell" />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-3 pb-4"
@@ -99,7 +102,7 @@ export function ProfileScreen() {
       >
         <SurfaceCard className="flex-row items-center p-4">
           <View className="h-14 w-14 items-center justify-center rounded-full bg-lavender">
-            <Text className="text-2xl text-brand">♙</Text>
+            <AppIcon color="#215C45" name="user" size={30} />
           </View>
           <View className="ml-3 flex-1">
             <Text className="text-sm font-semibold text-ink">{identity.name}</Text>
@@ -108,11 +111,11 @@ export function ProfileScreen() {
               <Text className="text-xs text-brand">Free plan</Text>
             </View>
           </View>
-          <Text className="text-muted">›</Text>
+          <AppIcon color="#777789" name="chevronRight" size={24} />
         </SurfaceCard>
         <SurfaceCard className="mt-3 flex-row items-center p-3">
           <View className="h-11 w-11 items-center justify-center rounded-full bg-brand">
-            <Text className="text-xl text-white">✦</Text>
+            <AppIcon color="#FFFFFF" name="sparkle" size={25} />
           </View>
           <View className="ml-3 flex-1">
             <Text className="text-xs font-semibold text-ink">Unlock more with Uwaci Plus</Text>
@@ -138,16 +141,16 @@ export function ProfileScreen() {
                     if (key === 'appearance') router.push('/(app)/appearance');
                   }}
                 >
-                  <Text className={`w-7 text-base ${index % 2 ? 'text-cyan' : 'text-violet'}`}>
-                    {icon}
-                  </Text>
+                  <View className="w-9">
+                    <AppIcon color={index % 2 ? '#10BFC5' : '#6F45EF'} name={icon} size={23} />
+                  </View>
                   <View className="flex-1">
                     <Text className="text-sm font-semibold text-ink dark:text-white">{title}</Text>
                     <Text className="mt-0.5 text-xs leading-4 text-muted">
                       {subtitle(key, fallback)}
                     </Text>
                   </View>
-                  <Text className="text-muted">›</Text>
+                  <AppIcon color="#777789" name="chevronRight" size={22} />
                 </Pressable>
               ))}
             </SurfaceCard>
@@ -157,7 +160,10 @@ export function ProfileScreen() {
           className="mt-3 min-h-11 items-center justify-center rounded-full bg-[#FFF0F2]"
           onPress={() => void logout()}
         >
-          <Text className="text-xs font-semibold text-danger">⇥ Log out</Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon color="#D6455D" name="logOut" size={20} />
+            <Text className="text-sm font-semibold text-danger">Log out</Text>
+          </View>
         </Pressable>
       </ScrollView>
       <BottomTabBar active="profile" profileMode />

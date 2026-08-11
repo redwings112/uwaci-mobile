@@ -1,5 +1,6 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { Typography } from '@/shared/components/Typography/Typography';
 
 import type { VoiceStatus } from '../types';
@@ -39,9 +40,7 @@ export function MicrophoneButton({ status, onPress, disabled = false }: Micropho
           disabled={disabled || busy}
           onPress={onPress}
         >
-          <Text className="text-5xl text-white" importantForAccessibility="no">
-            {recording || speaking ? '■' : '●'}
-          </Text>
+          <AppIcon color="#FFFFFF" name={recording || speaking ? 'square' : 'mic'} size={48} />
         </Pressable>
       </View>
       <Typography variant="label" className="text-center">

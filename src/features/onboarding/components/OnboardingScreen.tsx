@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { secureStorage } from '@/core/storage/secureStorage';
@@ -10,7 +10,7 @@ import { LanguageSelector } from '@/features/language/components/LanguageSelecto
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
-import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
+import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -21,7 +21,7 @@ function ActionCard({
   tone,
   onPress,
 }: {
-  icon: string;
+  icon: AppIconName;
   title: string;
   subtitle: string;
   tone: 'blue' | 'violet';
@@ -36,13 +36,13 @@ function ActionCard({
       <View
         className={`h-14 w-14 items-center justify-center rounded-full ${tone === 'blue' ? 'bg-brand/20' : 'bg-fuchsia/20'}`}
       >
-        <Text className={`text-xl ${tone === 'blue' ? 'text-brand' : 'text-fuchsia'}`}>{icon}</Text>
+        <AppIcon color={tone === 'blue' ? '#4AA9FF' : '#C43BE4'} name={icon} size={30} />
       </View>
       <View className="ml-3 flex-1">
         <Text className="text-base font-semibold text-white">{title}</Text>
         <Text className="mt-1 text-xs text-white/60">{subtitle}</Text>
       </View>
-      <Text className="text-xl text-violet">›</Text>
+      <AppIcon color="#8B5CF6" name="chevronRight" size={26} />
     </Pressable>
   );
 }
@@ -100,13 +100,13 @@ export function OnboardingScreen() {
     <SafeAreaView className="flex-1 bg-[#01020A] px-4" edges={['top', 'bottom']}>
       <View className="flex-1 justify-between pb-5 pt-12">
         <View className="items-center">
-          <View className="h-52 w-52 items-center justify-center">
-            <View className="absolute h-44 w-44 rounded-full border-2 border-brand/40" />
-            <View className="absolute h-32 w-32 rounded-full border border-fuchsia/50" />
-            <Text className="text-9xl font-bold text-brand">U</Text>
-            <View className="absolute top-1 h-5 w-5 rounded-full bg-accent" />
-          </View>
-          <UwaciLogo dark />
+          <Image
+            accessibilityLabel="Uwaci logo"
+            className="h-52 w-52"
+            resizeMode="contain"
+            source={require('../../../../assets/logo.png')}
+          />
+          <Text className="text-4xl font-semibold tracking-[6px] text-white">Uwaci</Text>
           <Text className="mt-2 text-xs font-semibold tracking-[3px] text-accent">
             KNOWLEDGE FOR HUMANITY
           </Text>
@@ -120,14 +120,14 @@ export function OnboardingScreen() {
 
         <View>
           <ActionCard
-            icon="◌"
+            icon="mic"
             title="Speak to Uwaci"
             subtitle="Tap and start speaking"
             tone="blue"
             onPress={() => void openChat('voice')}
           />
           <ActionCard
-            icon="▦"
+            icon="keyboard"
             title="Type to Uwaci"
             subtitle="Chat using text"
             tone="violet"
@@ -143,14 +143,20 @@ export function OnboardingScreen() {
               className="min-h-12 flex-1 items-center justify-center"
               onPress={() => router.push('/(auth)/sign-in')}
             >
-              <Text className="text-xs text-white">♙ Sign In</Text>
+              <View className="flex-row items-center gap-2">
+                <AppIcon color="#FFFFFF" name="logIn" size={20} />
+                <Text className="text-sm text-white">Sign In</Text>
+              </View>
             </Pressable>
             <View className="h-6 w-px bg-white/20" />
             <Pressable
               className="min-h-12 flex-1 items-center justify-center"
               onPress={() => router.push('/(auth)/sign-up')}
             >
-              <Text className="text-xs text-white">♙ Create Account</Text>
+              <View className="flex-row items-center gap-2">
+                <AppIcon color="#FFFFFF" name="userPlus" size={20} />
+                <Text className="text-sm text-white">Create Account</Text>
+              </View>
             </Pressable>
           </View>
           <Text className="mt-3 text-center text-xs leading-5 text-white/50">

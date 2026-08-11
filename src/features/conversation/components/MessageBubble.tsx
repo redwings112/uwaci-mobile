@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { Typography } from '@/shared/components/Typography/Typography';
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 
 import type { ConversationMessage } from '../types';
 
@@ -28,7 +29,7 @@ export function MessageBubble({ message }: { message: ConversationMessage }) {
       ) : null}
       {user && message.inputMethod === 'voice' ? (
         <View className="mt-2 h-6 w-6 items-center justify-center self-end rounded-full bg-surface">
-          <Text className="text-xs text-brand">▶</Text>
+          <AppIcon color="#215C45" name="mic" size={15} />
         </View>
       ) : null}
     </View>

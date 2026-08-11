@@ -19,6 +19,7 @@ import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
 import { voiceReset, voiceStatusChanged } from '@/features/voice/state/voiceSlice';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
+import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
 import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
@@ -132,21 +133,25 @@ export function ConversationScreen({
       setSpeechNotice(null);
       if (voiceResponsesEnabled) {
         dispatch(voiceStatusChanged('speaking'));
-        await speechService.speak(result.assistantMessage.content, {
-          language: getLanguage(language).speechLocale,
-          onDone: () => dispatch(voiceStatusChanged('idle')),
-          onStopped: () => dispatch(voiceStatusChanged('idle')),
-          onUnavailable: () => {
-            setSpeechNotice(
-              'No matching device voice is installed. The answer remains available as text.',
-            );
-            dispatch(voiceStatusChanged('idle'));
+        await speechService.speak(
+          result.assistantMessage.content,
+          {
+            language: getLanguage(language).speechLocale,
+            onDone: () => dispatch(voiceStatusChanged('idle')),
+            onStopped: () => dispatch(voiceStatusChanged('idle')),
+            onUnavailable: () => {
+              setSpeechNotice(
+                'No matching device voice is installed. The answer remains available as text.',
+              );
+              dispatch(voiceStatusChanged('idle'));
+            },
+            onError: () => {
+              setSpeechNotice('This answer could not be read aloud. You can still read it below.');
+              dispatch(voiceStatusChanged('idle'));
+            },
           },
-          onError: () => {
-            setSpeechNotice('This answer could not be read aloud. You can still read it below.');
-            dispatch(voiceStatusChanged('idle'));
-          },
-        });
+          result.assistantMessage.id,
+        );
       } else dispatch(voiceStatusChanged('idle'));
     },
     [dispatch, language, voiceResponsesEnabled],
@@ -291,15 +296,22 @@ export function ConversationScreen({
             className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
             onPress={() => setShowLanguage((value) => !value)}
           >
-            <Text className="text-xs font-semibold text-brand">
-              ◎ Auto-detect · {getLanguage(language).nativeLabel} ⌄
-            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <AppIcon color="#215C45" name="globe" size={18} />
+              <Text className="text-xs font-semibold text-brand">
+                Auto-detect · {getLanguage(language).nativeLabel}
+              </Text>
+              <AppIcon color="#215C45" name="chevronDown" size={16} />
+            </View>
           </Pressable>
           <Pressable
             className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
             onPress={startNewConversation}
           >
-            <Text className="text-xs font-semibold text-brand">▢ New chat</Text>
+            <View className="flex-row items-center gap-1.5">
+              <AppIcon color="#215C45" name="messageSquare" size={18} />
+              <Text className="text-xs font-semibold text-brand">New chat</Text>
+            </View>
           </Pressable>
         </View>
         {showLanguage ? (
@@ -389,7 +401,10 @@ export function ConversationScreen({
             <View className="flex-row items-center justify-between px-3">
               <Text className="text-xs font-semibold text-muted">Suggestions</Text>
               <Pressable onPress={() => setFeedbackVisible(true)}>
-                <Text className="text-xs text-muted">Why these? ⓘ</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-xs text-muted">Why these?</Text>
+                  <AppIcon color="#777789" name="info" size={16} />
+                </View>
               </Pressable>
             </View>
             <ScrollView

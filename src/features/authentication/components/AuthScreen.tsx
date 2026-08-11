@@ -79,7 +79,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <AppHeader back onBack={() => router.back()} actionIcon="?" actionLabel="Account help" />
+        <AppHeader back onBack={() => router.back()} actionIcon="help" actionLabel="Account help" />
         <ScrollView
           className="flex-1"
           contentContainerClassName="flex-grow px-5 pt-6"
