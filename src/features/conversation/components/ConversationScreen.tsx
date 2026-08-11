@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getLanguage } from '@/core/constants/languages';
@@ -99,7 +99,7 @@ export function ConversationScreen({
       ? activeConversationId
       : undefined;
   const remoteConversation = useGetConversationQuery(conversationId, { skip: isLocalConversation });
-  const offline = !network.isConnected || network.isInternetReachable === false;
+  const offline = network.initialized && network.isConnected === false;
 
   useEffect(() => {
     dispatch(conversationOpened(conversationId));
@@ -281,141 +281,151 @@ export function ConversationScreen({
   const busy = request.status === 'sending' || voiceQuery.isLoading;
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader onMenu={() => router.push('/(app)/profile')} />
-      <View className="flex-row items-center justify-between px-3 pb-2">
-        <Pressable
-          className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
-          onPress={() => setShowLanguage((value) => !value)}
-        >
-          <Text className="text-xs font-semibold text-brand">
-            ◎ Auto-detect · {getLanguage(language).nativeLabel} ⌄
-          </Text>
-        </Pressable>
-        <Pressable
-          className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
-          onPress={startNewConversation}
-        >
-          <Text className="text-xs font-semibold text-brand">▢ New chat</Text>
-        </Pressable>
-      </View>
-      {showLanguage ? (
-        <View className="z-10 px-3 pb-2">
-          <LanguageSelector
-            value={language}
-            onChange={(value) => {
-              dispatch(preferredLanguageChanged(value));
-              setShowLanguage(false);
-            }}
-          />
-        </View>
-      ) : null}
-
-      <ConversationList
-        conversationId={serverConversationId ?? conversationId}
-        messages={messages}
-      />
-
-      {offline ? (
-        <View className="px-3 pb-2">
-          <StatusBanner
-            title="You’re offline"
-            message="Reconnect before sending a voice or text question."
-            variant="warning"
-          />
-        </View>
-      ) : null}
-      {auth.status === 'error' && auth.errorMessage ? (
-        <View className="px-3 pb-2">
-          <StatusBanner
-            title="Secure session unavailable"
-            message={auth.errorMessage}
-            variant="error"
-          />
-        </View>
-      ) : null}
-      {speechNotice ? (
-        <View className="px-3 pb-2">
-          <StatusBanner title="Spoken response unavailable" message={speechNotice} />
-        </View>
-      ) : null}
-      {request.errorMessage || recorder.errorMessage ? (
-        <View className="px-3">
-          <ErrorState message={request.errorMessage ?? recorder.errorMessage ?? 'Voice failed.'} />
-        </View>
-      ) : null}
-      {recoveryTranscript ? (
-        <View className="px-3 pb-2">
-          <TranscriptionPreview text={recoveryTranscript} />
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <AppHeader onMenu={() => router.push('/(app)/profile')} />
+        <View className="flex-row items-center justify-between px-3 pb-2">
           <Pressable
-            className="mt-2 min-h-10 items-center justify-center rounded-full bg-lavender"
-            onPress={() => {
-              setComposerPrefill((current) => ({
-                value: recoveryTranscript,
-                key: current.key + 1,
-              }));
-              setRecoveryTranscript(null);
-              dispatch(requestErrorCleared());
-            }}
+            className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
+            onPress={() => setShowLanguage((value) => !value)}
           >
-            <Text className="text-xs font-semibold text-brand">Edit transcript instead</Text>
+            <Text className="text-xs font-semibold text-brand">
+              ◎ Auto-detect · {getLanguage(language).nativeLabel} ⌄
+            </Text>
+          </Pressable>
+          <Pressable
+            className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
+            onPress={startNewConversation}
+          >
+            <Text className="text-xs font-semibold text-brand">▢ New chat</Text>
           </Pressable>
         </View>
-      ) : null}
-      {recorder.status === 'recording' ? (
-        <SurfaceCard className="mx-3 mb-2 items-center p-2">
-          <RecordingIndicator durationMillis={recorder.durationMillis} />
-          <Text className="mt-1 text-xs text-muted">
-            Tap the microphone again to stop and ask Uwaci.
-          </Text>
-        </SurfaceCard>
-      ) : null}
-      {busy ? (
-        <Typography className="px-3 py-1 text-center text-muted" accessibilityLiveRegion="polite">
-          Uwaci is thinking…
-        </Typography>
-      ) : null}
+        {showLanguage ? (
+          <View className="z-10 px-3 pb-2">
+            <LanguageSelector
+              value={language}
+              onChange={(value) => {
+                dispatch(preferredLanguageChanged(value));
+                setShowLanguage(false);
+              }}
+            />
+          </View>
+        ) : null}
 
-      {messages.some((message) => message.role === 'assistant') ? (
-        <View className="pb-1">
-          <View className="flex-row items-center justify-between px-3">
-            <Text className="text-xs font-semibold text-muted">Suggestions</Text>
-            <Pressable onPress={() => setFeedbackVisible(true)}>
-              <Text className="text-xs text-muted">Why these? ⓘ</Text>
+        <ConversationList
+          conversationId={serverConversationId ?? conversationId}
+          messages={messages}
+        />
+
+        {offline ? (
+          <View className="px-3 pb-2">
+            <StatusBanner
+              title="You’re offline"
+              message="Reconnect before sending a voice or text question."
+              variant="warning"
+            />
+          </View>
+        ) : null}
+        {auth.status === 'error' && auth.errorMessage ? (
+          <View className="px-3 pb-2">
+            <StatusBanner
+              title="Secure session unavailable"
+              message={auth.errorMessage}
+              variant="error"
+            />
+          </View>
+        ) : null}
+        {speechNotice ? (
+          <View className="px-3 pb-2">
+            <StatusBanner title="Spoken response unavailable" message={speechNotice} />
+          </View>
+        ) : null}
+        {request.errorMessage || recorder.errorMessage ? (
+          <View className="px-3">
+            <ErrorState
+              message={request.errorMessage ?? recorder.errorMessage ?? 'Voice failed.'}
+            />
+          </View>
+        ) : null}
+        {recoveryTranscript ? (
+          <View className="px-3 pb-2">
+            <TranscriptionPreview text={recoveryTranscript} />
+            <Pressable
+              className="mt-2 min-h-10 items-center justify-center rounded-full bg-lavender"
+              onPress={() => {
+                setComposerPrefill((current) => ({
+                  value: recoveryTranscript,
+                  key: current.key + 1,
+                }));
+                setRecoveryTranscript(null);
+                dispatch(requestErrorCleared());
+              }}
+            >
+              <Text className="text-xs font-semibold text-brand">Edit transcript instead</Text>
             </Pressable>
           </View>
-          <ScrollView
-            horizontal
-            contentContainerClassName="gap-2 px-3 py-2"
-            showsHorizontalScrollIndicator={false}
-          >
-            {suggestions.map((suggestion) => (
-              <Pressable
-                key={suggestion}
-                className="min-h-10 max-w-40 justify-center rounded-control border border-border bg-surface px-3"
-                disabled={busy}
-                onPress={() => void sendText(suggestion)}
-              >
-                <Text className="text-xs text-ink dark:text-white">{suggestion}</Text>
+        ) : null}
+        {recorder.status === 'recording' ? (
+          <SurfaceCard className="mx-3 mb-2 items-center p-2">
+            <RecordingIndicator
+              durationMillis={recorder.durationMillis}
+              audioLevel={recorder.audioLevel}
+            />
+            <Text className="mt-1 text-xs text-muted">
+              Tap the microphone again to stop and ask Uwaci.
+            </Text>
+          </SurfaceCard>
+        ) : null}
+        {busy ? (
+          <Typography className="px-3 py-1 text-center text-muted" accessibilityLiveRegion="polite">
+            Uwaci is thinking…
+          </Typography>
+        ) : null}
+
+        {messages.some((message) => message.role === 'assistant') ? (
+          <View className="pb-1">
+            <View className="flex-row items-center justify-between px-3">
+              <Text className="text-xs font-semibold text-muted">Suggestions</Text>
+              <Pressable onPress={() => setFeedbackVisible(true)}>
+                <Text className="text-xs text-muted">Why these? ⓘ</Text>
               </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
-      <ConversationComposer
-        key={composerPrefill.key}
-        autoFocus={focusComposer}
-        disabled={busy || recorder.status === 'recording'}
-        initialValue={composerPrefill.value}
-        onMicrophone={() => void handleMicrophone()}
-        onSend={sendText}
-      />
-      <BottomTabBar active="chat" />
-      <FeedbackSheet
-        visible={feedbackVisible}
-        submitting={feedbackResult.isLoading}
-        onClose={() => setFeedbackVisible(false)}
-        onSubmit={(category) => void sendFeedback(category)}
-      />
+            </View>
+            <ScrollView
+              horizontal
+              contentContainerClassName="gap-2 px-3 py-2"
+              showsHorizontalScrollIndicator={false}
+            >
+              {suggestions.map((suggestion) => (
+                <Pressable
+                  key={suggestion}
+                  className="min-h-10 max-w-40 justify-center rounded-control border border-border bg-surface px-3"
+                  disabled={busy}
+                  onPress={() => void sendText(suggestion)}
+                >
+                  <Text className="text-xs text-ink dark:text-white">{suggestion}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+        <ConversationComposer
+          key={composerPrefill.key}
+          autoFocus={focusComposer}
+          disabled={busy || recorder.status === 'recording'}
+          initialValue={composerPrefill.value}
+          onMicrophone={() => void handleMicrophone()}
+          onSend={sendText}
+        />
+        <BottomTabBar active="chat" />
+        <FeedbackSheet
+          visible={feedbackVisible}
+          submitting={feedbackResult.isLoading}
+          onClose={() => setFeedbackVisible(false)}
+          onSubmit={(category) => void sendFeedback(category)}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

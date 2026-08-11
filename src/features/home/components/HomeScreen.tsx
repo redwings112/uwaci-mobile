@@ -41,7 +41,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
   const busy =
     ['processing_audio', 'uploading', 'transcribing', 'thinking'].includes(recorder.status) ||
     voiceQuery.isLoading;
-  const offline = !network.isConnected || network.isInternetReachable === false;
+  const offline = network.initialized && network.isConnected === false;
   const initialActionHandled = useRef(false);
 
   const begin = useCallback(async () => {
@@ -144,7 +144,11 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
                     <View
                       key={`${height}-${index}`}
                       className="w-0.5 rounded-full bg-white/50"
-                      style={{ height: recording ? height / 2 : 3 }}
+                      style={{
+                        height: recording
+                          ? Math.max(3, (height / 2) * (0.2 + recorder.audioLevel * 0.8))
+                          : 3,
+                      }}
                     />
                   ))}
                 </View>

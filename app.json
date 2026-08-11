@@ -36,6 +36,7 @@
     },
     "android": {
       "package": "org.uwaci.mobile",
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO",

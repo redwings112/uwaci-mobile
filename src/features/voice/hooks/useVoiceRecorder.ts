@@ -7,6 +7,7 @@ import {
   startAudioRecording,
   stopAudioRecording,
 } from '@/core/audio/audioRecorder';
+import { normalizeAudioLevel } from '@/core/audio/audioMetering';
 import { requestMicrophonePermission } from '@/core/audio/audioPermissions';
 import { AppError } from '@/core/errors/AppError';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -14,11 +15,16 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { recordingUpdated, voiceFailed, voiceReset, voiceStatusChanged } from '../state/voiceSlice';
 import type { CompletedRecording } from '@/core/audio/audioTypes';
 
+const recordingOptions = {
+  ...RecordingPresets.HIGH_QUALITY,
+  isMeteringEnabled: true,
+};
+
 export function useVoiceRecorder() {
   const dispatch = useAppDispatch();
   const voice = useAppSelector((state) => state.voice);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder, 250);
+  const recorder = useAudioRecorder(recordingOptions);
+  const recorderState = useAudioRecorderState(recorder, 100);
 
   useEffect(() => {
     if (voice.status === 'recording')
@@ -75,5 +81,11 @@ export function useVoiceRecorder() {
     dispatch(voiceReset());
   }, [dispatch, recorder]);
 
-  return { ...voice, start, stop, cancel };
+  return {
+    ...voice,
+    audioLevel: normalizeAudioLevel(recorderState.metering),
+    start,
+    stop,
+    cancel,
+  };
 }
