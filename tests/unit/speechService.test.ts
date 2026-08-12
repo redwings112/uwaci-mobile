@@ -1,10 +1,16 @@
 import * as Speech from 'expo-speech';
 
-import { resolveSpeechLanguage, speechService } from '@/core/speech/speechService';
+import {
+  resolveSpeechLanguage,
+  resolveSpeechVoice,
+  speechService,
+} from '@/core/speech/speechService';
 import { prepareTextForSpeech } from '@/core/speech/speechText';
 
 jest.mock('expo-speech', () => ({
-  getAvailableVoicesAsync: jest.fn(async () => [{ language: 'en-US' }]),
+  getAvailableVoicesAsync: jest.fn(async () => [
+    { language: 'en-US', identifier: 'enhanced-en', quality: 'Enhanced' },
+  ]),
   isSpeakingAsync: jest.fn(async () => false),
   pause: jest.fn(async () => undefined),
   resume: jest.fn(async () => undefined),
@@ -21,6 +27,14 @@ describe('device speech language selection', () => {
 
   it('returns a text-only fallback when no compatible voice is installed', () => {
     expect(resolveSpeechLanguage('ln-CD', [{ language: 'en-US' }])).toBeNull();
+  });
+
+  it('prefers an enhanced compatible device voice', () => {
+    const voices = [
+      { language: 'en-US', identifier: 'default', quality: 'Default' },
+      { language: 'en-GB', identifier: 'enhanced', quality: 'Enhanced' },
+    ];
+    expect(resolveSpeechVoice('en-US', voices)?.identifier).toBe('enhanced');
   });
 });
 
@@ -63,7 +77,12 @@ describe('speech-ready answer text', () => {
 
     expect(Speech.speak).toHaveBeenCalledWith(
       'Title. About a Boy. A short history.',
-      expect.objectContaining({ language: 'en-US' }),
+      expect.objectContaining({
+        language: 'en-US',
+        voice: 'enhanced-en',
+        rate: 0.94,
+        pitch: 1,
+      }),
     );
   });
 });

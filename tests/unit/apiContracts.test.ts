@@ -57,4 +57,22 @@ describe('backend API contract mapping', () => {
     expect(result.userMessage.transcription?.confidence).toBe(0.91);
     expect(result.transcription?.codeSwitchingDetected).toBe(true);
   });
+
+  it('maps a structured voice language action', () => {
+    const result = mapApiQueryResult({
+      conversation_id: 'conversation-1',
+      user_message: userMessage,
+      assistant_message: assistantMessage,
+      language: {
+        preferred_language: 'fr',
+        primary_language: 'en',
+        detected_languages: ['en'],
+        code_switching_detected: false,
+      },
+      transcription: null,
+      voice_action: { type: 'language_changed', language: 'fr' },
+    });
+
+    expect(result.voiceAction).toEqual({ type: 'language_changed', language: 'fr' });
+  });
 });

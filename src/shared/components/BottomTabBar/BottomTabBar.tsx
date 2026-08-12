@@ -9,6 +9,7 @@ type AppTab = 'chat' | 'history' | 'saved' | 'discover' | 'profile';
 interface BottomTabBarProps {
   active: AppTab;
   profileMode?: boolean;
+  showSpeechControls?: boolean;
 }
 
 const tabs: Record<AppTab, { label: string; icon: AppIconName; href: Href }> = {
@@ -19,14 +20,18 @@ const tabs: Record<AppTab, { label: string; icon: AppIconName; href: Href }> = {
   profile: { label: 'Profile', icon: 'profile', href: '/(app)/profile' },
 };
 
-export function BottomTabBar({ active, profileMode = false }: BottomTabBarProps) {
+export function BottomTabBar({
+  active,
+  profileMode = false,
+  showSpeechControls = true,
+}: BottomTabBarProps) {
   const router = useRouter();
   const visibleTabs: AppTab[] = profileMode
     ? ['chat', 'history', 'saved', 'profile']
     : ['chat', 'history', 'saved', 'discover'];
   return (
     <View>
-      <SpeechControlBar />
+      {showSpeechControls ? <SpeechControlBar /> : null}
       <View className="flex-row border-t border-border bg-surface px-1 pb-2 pt-1 dark:border-white/10 dark:bg-[#17152C]">
         {visibleTabs.map((key) => {
           const tab = tabs[key];

@@ -38,4 +38,8 @@ export interface QueryResult {
     detectedLanguages: string[];
     codeSwitchingDetected: boolean;
   };
+  voiceAction?: {
+    type: 'language_changed';
+    language: UwaciLanguageCode;
+  };
 }

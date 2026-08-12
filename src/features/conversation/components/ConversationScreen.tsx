@@ -154,12 +154,15 @@ export function ConversationScreen({
       dispatch(requestFinished());
       setRecoveryTranscript(null);
       setSpeechNotice(null);
+      const responseLanguage = result.voiceAction?.language ?? language;
+      if (result.voiceAction?.type === 'language_changed')
+        dispatch(preferredLanguageChanged(result.voiceAction.language));
       if (voiceResponsesEnabled) {
         dispatch(voiceStatusChanged('speaking'));
         await speechService.speak(
           result.assistantMessage.content,
           {
-            language: getLanguage(language).speechLocale,
+            language: getLanguage(responseLanguage).speechLocale,
             onDone: () => dispatch(voiceStatusChanged('idle')),
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onUnavailable: () => {
@@ -311,6 +314,14 @@ export function ConversationScreen({
     });
   };
 
+  const openVoiceMode = () => {
+    Keyboard.dismiss();
+    router.push({
+      pathname: '/(app)',
+      ...(serverConversationId ? { params: { conversationId: serverConversationId } } : {}),
+    });
+  };
+
   const sendFeedback = async (category: FeedbackCategory) => {
     const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
     try {
@@ -360,15 +371,25 @@ export function ConversationScreen({
               <AppIcon color="#215C45" name="chevronDown" size={16} />
             </View>
           </Pressable>
-          <Pressable
-            className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
-            onPress={startNewConversation}
-          >
-            <View className="flex-row items-center gap-1.5">
+          <View className="flex-row gap-2">
+            <Pressable
+              accessibilityLabel="Switch to voice mode"
+              className="min-h-9 items-center justify-center rounded-full border border-brand bg-lavender px-3"
+              onPress={openVoiceMode}
+            >
+              <View className="flex-row items-center gap-1.5">
+                <AppIcon color="#215C45" name="mic" size={17} />
+                <Text className="text-xs font-semibold text-brand">Voice</Text>
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Start new chat"
+              className="h-9 w-9 items-center justify-center rounded-full border border-border bg-surface"
+              onPress={startNewConversation}
+            >
               <AppIcon color="#215C45" name="messageSquare" size={18} />
-              <Text className="text-xs font-semibold text-brand">New chat</Text>
-            </View>
-          </Pressable>
+            </Pressable>
+          </View>
         </View>
         {showLanguage ? (
           <View className="z-10 px-3 pb-2">

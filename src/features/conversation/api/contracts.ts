@@ -35,12 +35,18 @@ interface ApiTranscription {
   code_switching_detected: boolean;
 }
 
+interface ApiVoiceAction {
+  type: 'language_changed';
+  language: UwaciLanguageCode;
+}
+
 export interface ApiQueryResult {
   conversation_id: string;
   user_message: ApiMessage;
   assistant_message: ApiMessage;
   language: ApiLanguageMetadata;
   transcription: ApiTranscription | null;
+  voice_action?: ApiVoiceAction | null;
 }
 
 export function mapApiMessage(message: ApiMessage): ConversationMessage {
@@ -94,5 +100,6 @@ export function mapApiQueryResult(result: ApiQueryResult): QueryResult {
           },
         }
       : {}),
+    ...(result.voice_action ? { voiceAction: result.voice_action } : {}),
   };
 }

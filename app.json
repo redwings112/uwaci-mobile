@@ -29,7 +29,7 @@
       "expo-secure-store"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "org.uwaci.mobile",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Uwaci records audio only when you choose to ask a voice question."
