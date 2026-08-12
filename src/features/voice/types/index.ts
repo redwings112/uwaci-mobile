@@ -3,6 +3,7 @@ export type VoiceStatus =
   | 'requesting_permission'
   | 'ready'
   | 'recording'
+  | 'stopping'
   | 'processing_audio'
   | 'uploading'
   | 'transcribing'

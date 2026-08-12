@@ -6,7 +6,9 @@ import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 interface ConversationComposerProps {
   onSend: (text: string) => Promise<void>;
   onMicrophone?: () => void;
-  disabled?: boolean;
+  inputDisabled?: boolean;
+  microphoneDisabled?: boolean;
+  microphoneActive?: boolean;
   initialValue?: string;
   autoFocus?: boolean;
 }
@@ -14,7 +16,9 @@ interface ConversationComposerProps {
 export function ConversationComposer({
   onSend,
   onMicrophone,
-  disabled = false,
+  inputDisabled = false,
+  microphoneDisabled = false,
+  microphoneActive = false,
   initialValue = '',
   autoFocus = false,
 }: ConversationComposerProps) {
@@ -35,18 +39,23 @@ export function ConversationComposer({
       style={{ elevation: 3 }}
     >
       <Pressable
-        accessibilityLabel="Ask by voice"
-        className="h-10 w-10 items-center justify-center"
-        disabled={disabled}
+        accessibilityLabel={microphoneActive ? 'Stop recording and send' : 'Ask by voice'}
+        accessibilityState={{ disabled: microphoneDisabled, selected: microphoneActive }}
+        className={`h-10 w-10 items-center justify-center rounded-full ${microphoneActive ? 'bg-danger' : ''}`}
+        disabled={microphoneDisabled}
         onPress={onMicrophone}
       >
-        <AppIcon color="#215C45" name="mic" size={27} />
+        <AppIcon
+          color={microphoneActive ? '#FFFFFF' : '#215C45'}
+          name={microphoneActive ? 'square' : 'mic'}
+          size={27}
+        />
       </Pressable>
       <TextInput
         ref={input}
         accessibilityLabel="Your question"
         className="max-h-24 min-h-10 flex-1 px-2 text-sm text-ink"
-        editable={!disabled}
+        editable={!inputDisabled}
         multiline
         onChangeText={setValue}
         onSubmitEditing={() => void submit()}
@@ -61,7 +70,7 @@ export function ConversationComposer({
       <Pressable
         accessibilityLabel="Send question"
         className={`h-10 w-10 items-center justify-center rounded-full ${value.trim() ? 'bg-brand' : 'bg-lavender'}`}
-        disabled={disabled || !value.trim()}
+        disabled={inputDisabled || !value.trim()}
         onPress={() => void submit()}
       >
         <AppIcon color={value.trim() ? '#FFFFFF' : '#6F45EF'} name="send" size={22} />

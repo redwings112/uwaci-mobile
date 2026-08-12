@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, Share, Text, View } from 'react-native';
 
 import { getLanguage } from '@/core/constants/languages';
+import { logger } from '@/core/logging/logger';
 import { isAnswerSaved, toggleSavedAnswer } from '@/features/library/storage/libraryStorage';
 import { speechService } from '@/core/speech/speechService';
 import { useSpeechPlayback } from '@/core/speech/useSpeechPlayback';
@@ -23,31 +24,60 @@ export function AssistantMessage({
   conversationId?: string;
 }) {
   const language = useAppSelector((state) => state.language.preferredConversationLanguage);
+  const userId = useAppSelector((state) => state.auth.userId);
   const [rate, setRate] = useState(1);
-  const [saved, setSaved] = useState(false);
+  const [savedState, setSavedState] = useState<{ key: string; value: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const mounted = useRef(true);
   const playback = useSpeechPlayback();
   const activePlayback = playback.messageId === message.id && playback.status !== 'idle';
   const paused = activePlayback && playback.status === 'paused';
+  const savedKey = userId ? `${userId}:${message.id}` : null;
+  const saved = savedState?.key === savedKey && savedState.value;
+
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   useEffect(() => {
     let active = true;
-    void isAnswerSaved(message.id).then((value) => {
-      if (active) setSaved(value);
-    });
+    if (!userId) return () => undefined;
+    const key = `${userId}:${message.id}`;
+    void isAnswerSaved(userId, message.id)
+      .then((value) => {
+        if (active) setSavedState({ key, value });
+      })
+      .catch((error: unknown) => {
+        logger.warn('Saved answer state could not be loaded', {
+          error: error instanceof Error ? error.name : 'unknown',
+        });
+      });
     return () => {
       active = false;
     };
-  }, [message.id]);
+  }, [message.id, userId]);
 
   const save = async () => {
-    if (!conversationId) return;
-    const next = await toggleSavedAnswer({
-      conversationId,
-      messageId: message.id,
-      content: message.content,
-      createdAt: message.createdAt,
-    });
-    setSaved(next);
+    if (!conversationId || !userId || saving) return;
+    setSaving(true);
+    try {
+      const next = await toggleSavedAnswer(userId, {
+        conversationId,
+        messageId: message.id,
+        content: message.content,
+        createdAt: message.createdAt,
+      });
+      if (mounted.current) setSavedState({ key: `${userId}:${message.id}`, value: next });
+    } catch (error: unknown) {
+      logger.warn('Saved answer could not be updated', {
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+    } finally {
+      if (mounted.current) setSaving(false);
+    }
   };
 
   const speak = async () => {
@@ -106,7 +136,9 @@ export function AssistantMessage({
           </Pressable>
           <Pressable
             accessibilityLabel={saved ? 'Remove answer from saved' : 'Save answer'}
+            accessibilityState={{ busy: saving, disabled: saving }}
             className="h-11 w-11 items-center justify-center rounded-full"
+            disabled={saving}
             onPress={() => void save()}
           >
             <AppIcon color={saved ? '#6F45EF' : '#777789'} name="star" size={24} />

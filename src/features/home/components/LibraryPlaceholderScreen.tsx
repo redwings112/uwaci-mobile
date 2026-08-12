@@ -1,20 +1,23 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  type HistoryEntry,
-  listHistory,
   listSavedAnswers,
   type SavedAnswer,
   toggleSavedAnswer,
 } from '@/features/library/storage/libraryStorage';
+import { mapApiError } from '@/core/errors/mapApiError';
+import { useListConversationsQuery } from '@/features/conversation/api/conversationApi';
+import { conversationToHistoryEntry } from '@/features/library/history';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
 import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
+import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
+import { useAppSelector } from '@/store/hooks';
 
 type LibraryTab = 'history' | 'saved' | 'discover';
 
@@ -44,24 +47,50 @@ function timeLabel(value: string): string {
 
 export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
   const router = useRouter();
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const auth = useAppSelector((state) => state.auth);
+  const userId = auth.userId;
   const [saved, setSaved] = useState<SavedAnswer[]>([]);
-  const [loading, setLoading] = useState(tab !== 'discover');
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [savedError, setSavedError] = useState<string | null>(null);
+  const {
+    data: conversations = [],
+    error: conversationsError,
+    isLoading: conversationsLoading,
+    isUninitialized: conversationsUninitialized,
+    refetch: refetchConversations,
+  } = useListConversationsQuery(undefined, {
+    skip: tab !== 'history' || !userId,
+  });
+  const history = conversations.map(conversationToHistoryEntry);
 
-  useEffect(() => {
-    let active = true;
-    if (tab === 'discover') return () => undefined;
-    const load = tab === 'history' ? listHistory() : listSavedAnswers();
-    void load.then((items) => {
-      if (!active) return;
-      if (tab === 'history') setHistory(items as HistoryEntry[]);
-      else setSaved(items as SavedAnswer[]);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [tab]);
+  useFocusEffect(
+    useCallback(() => {
+      if (tab !== 'history' || !userId || conversationsUninitialized) return;
+      void refetchConversations();
+    }, [conversationsUninitialized, refetchConversations, tab, userId]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (tab !== 'saved' || !userId) return;
+      let active = true;
+      setSavedLoading(true);
+      setSavedError(null);
+      void listSavedAnswers(userId)
+        .then((items) => {
+          if (active) setSaved(items);
+        })
+        .catch(() => {
+          if (active) setSavedError('Saved answers could not be loaded from this device.');
+        })
+        .finally(() => {
+          if (active) setSavedLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }, [tab, userId]),
+  );
 
   const openConversation = (conversationId: string) => {
     router.push({
@@ -78,14 +107,26 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
   };
 
   const removeSaved = async (answer: SavedAnswer) => {
-    await toggleSavedAnswer({
-      conversationId: answer.conversationId,
-      messageId: answer.messageId,
-      content: answer.content,
-      createdAt: answer.createdAt,
-    });
-    setSaved((items) => items.filter((item) => item.id !== answer.id));
+    if (!userId) return;
+    try {
+      await toggleSavedAnswer(userId, {
+        conversationId: answer.conversationId,
+        messageId: answer.messageId,
+        content: answer.content,
+        createdAt: answer.createdAt,
+      });
+      setSaved((items) => items.filter((item) => item.id !== answer.id));
+    } catch {
+      setSavedError('That answer could not be removed from this device.');
+    }
   };
+
+  const historyError = conversationsError ? mapApiError(conversationsError).message : null;
+  const loading =
+    auth.status === 'unknown' ||
+    (tab === 'history' && Boolean(userId) && conversationsLoading) ||
+    (tab === 'saved' && Boolean(userId) && savedLoading);
+  const error = tab === 'history' ? historyError : tab === 'saved' ? savedError : null;
 
   const title = tab === 'history' ? 'History' : tab === 'saved' ? 'Saved' : 'Discover';
   return (
@@ -95,7 +136,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
         <Typography variant="title">{title}</Typography>
         <Typography variant="caption" className="mt-1">
           {tab === 'history'
-            ? 'Continue conversations saved securely on this device.'
+            ? 'Continue your account conversations across app sessions.'
             : tab === 'saved'
               ? 'Answers you bookmarked for quick access.'
               : 'Try a guided prompt, then keep the conversation going.'}
@@ -111,7 +152,29 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
           <Typography className="py-10 text-center text-muted">Loading…</Typography>
         ) : null}
 
-        {!loading && tab === 'history' && history.length === 0 ? (
+        {!loading && !userId && tab !== 'discover' ? (
+          <SurfaceCard className="items-center p-8">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
+              <AppIcon color="#215C45" name="profile" size={34} />
+            </View>
+            <Typography variant="title" className="mt-5 text-center">
+              Sign in to see your {tab}
+            </Typography>
+            <Typography className="mt-3 text-center text-muted">
+              Your conversations and saved answers are kept separate for each account.
+            </Typography>
+            <Pressable
+              className="mt-5 min-h-11 items-center justify-center rounded-full bg-brand px-6"
+              onPress={() => router.push('/(auth)/sign-in')}
+            >
+              <Text className="text-sm font-semibold text-white">Sign in</Text>
+            </Pressable>
+          </SurfaceCard>
+        ) : null}
+
+        {!loading && userId && error ? <ErrorState message={error} /> : null}
+
+        {!loading && userId && !error && tab === 'history' && history.length === 0 ? (
           <SurfaceCard className="items-center p-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
               <AppIcon color="#215C45" name="history" size={34} />
@@ -125,7 +188,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
           </SurfaceCard>
         ) : null}
 
-        {tab === 'history'
+        {userId && !error && tab === 'history'
           ? history.map((item) => (
               <Pressable
                 key={item.conversationId}
@@ -154,7 +217,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
             ))
           : null}
 
-        {!loading && tab === 'saved' && saved.length === 0 ? (
+        {!loading && userId && !error && tab === 'saved' && saved.length === 0 ? (
           <SurfaceCard className="items-center p-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
               <AppIcon color="#6F45EF" name="bookmark" size={34} />
@@ -168,7 +231,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
           </SurfaceCard>
         ) : null}
 
-        {tab === 'saved'
+        {userId && !error && tab === 'saved'
           ? saved.map((answer) => (
               <SurfaceCard key={answer.id} className="mb-3 p-4">
                 <Pressable onPress={() => openConversation(answer.conversationId)}>

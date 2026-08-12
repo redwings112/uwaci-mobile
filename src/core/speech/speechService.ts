@@ -1,6 +1,7 @@
 import * as Speech from 'expo-speech';
 import { Platform } from 'react-native';
 
+import { prepareTextForSpeech } from './speechText';
 import type { SpeakOptions } from './speechTypes';
 
 export type SpeechPlaybackStatus = 'idle' | 'speaking' | 'paused';
@@ -42,6 +43,12 @@ export const speechService = {
   },
   async speak(text: string, options: SpeakOptions = {}, messageId?: string): Promise<void> {
     await Speech.stop();
+    const spokenText = prepareTextForSpeech(text, options.language);
+    if (!spokenText) {
+      updatePlayback('idle');
+      options.onDone?.();
+      return;
+    }
     let language = options.language;
     if (language) {
       try {
@@ -60,7 +67,7 @@ export const speechService = {
       }
     }
     updatePlayback('speaking', messageId ?? null);
-    Speech.speak(text, {
+    Speech.speak(spokenText, {
       ...(language ? { language } : {}),
       ...(options.rate !== undefined ? { rate: options.rate } : {}),
       ...(options.pitch !== undefined ? { pitch: options.pitch } : {}),

@@ -18,4 +18,11 @@ describe('mapApiError', () => {
   it('safely handles unknown values', () => {
     expect(mapApiError('network exploded').code).toBe('UNKNOWN_ERROR');
   });
+
+  it('does not misreport a request timeout as an offline device', () => {
+    const error = mapApiError({ status: 'TIMEOUT_ERROR', error: 'Timed out' });
+    expect(error.code).toBe('PROVIDER_TIMEOUT');
+    expect(error.message).toContain('longer');
+    expect(error.message).not.toContain('connection');
+  });
 });

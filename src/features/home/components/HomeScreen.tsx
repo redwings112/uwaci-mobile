@@ -18,13 +18,13 @@ import {
   conversationOpened,
   conversationReset,
   messageAdded,
+  requestErrorCleared,
   requestFailed,
   requestFinished,
   requestStarted,
 } from '@/features/conversation/state/conversationSlice';
 import { voiceReset } from '@/features/voice/state/voiceSlice';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
-import { recordHistory } from '@/features/library/storage/libraryStorage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 const waveform = [8, 14, 22, 30, 18, 38, 26, 16, 32, 21, 12, 25, 36, 17, 10];
@@ -34,30 +34,41 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
   const requestError = useAppSelector((state) => state.conversation.errorMessage);
-  const network = useAppSelector((state) => state.network);
   const recorder = useVoiceRecorder();
   const voiceQuery = useVoiceQuery();
   const [showLanguage, setShowLanguage] = useState(false);
   const recording = recorder.status === 'recording';
   const busy =
-    ['processing_audio', 'uploading', 'transcribing', 'thinking'].includes(recorder.status) ||
-    voiceQuery.isLoading;
-  const offline = network.initialized && network.isConnected === false;
+    [
+      'requesting_permission',
+      'stopping',
+      'processing_audio',
+      'uploading',
+      'transcribing',
+      'thinking',
+    ].includes(recorder.status) || voiceQuery.isLoading;
   const initialActionHandled = useRef(false);
+  const mounted = useRef(true);
+  const voiceActionInProgress = useRef(false);
+
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   const begin = useCallback(async () => {
-    if (offline) {
-      dispatch(requestFailed('You are offline. Reconnect before recording a question.'));
-      return;
-    }
     try {
       await ensureAuthSession();
     } catch {
       router.push({ pathname: '/(auth)/sign-in', params: { next: 'voice' } });
       return;
     }
+    if (!mounted.current) return;
+    dispatch(requestErrorCleared());
     await recorder.start();
-  }, [dispatch, offline, recorder, router]);
+  }, [dispatch, recorder, router]);
 
   useEffect(() => {
     if (initialActionHandled.current || !startRecording) return;
@@ -66,32 +77,34 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
   }, [begin, startRecording]);
 
   const askUwaci = async () => {
-    if (!recording) {
-      await begin();
-      return;
-    }
-    const audio = await recorder.stop();
-    if (!audio) return;
-    dispatch(requestStarted());
+    if (voiceActionInProgress.current) return;
+    voiceActionInProgress.current = true;
     try {
-      const result = await voiceQuery.submit({ uri: audio.uri, preferredLanguage: language });
-      dispatch(conversationReset());
-      dispatch(conversationOpened(result.conversationId));
-      dispatch(messageAdded(result.userMessage));
-      dispatch(messageAdded(result.assistantMessage));
-      dispatch(requestFinished());
-      void recordHistory({
-        conversationId: result.conversationId,
-        title: result.userMessage.content.slice(0, 48),
-        preview: result.assistantMessage.content.slice(0, 120),
-        updatedAt: result.assistantMessage.createdAt,
-      });
-      router.push({
-        pathname: '/(app)/conversation/[conversationId]',
-        params: { conversationId: result.conversationId },
-      });
-    } catch (error: unknown) {
-      dispatch(requestFailed(mapApiError(error).message));
+      if (!recording) {
+        await begin();
+        return;
+      }
+      const audio = await recorder.stop();
+      if (!audio || !mounted.current) return;
+      dispatch(requestStarted());
+      try {
+        const result = await voiceQuery.submit({ uri: audio.uri, preferredLanguage: language });
+        if (!mounted.current) return;
+        dispatch(conversationReset());
+        dispatch(conversationOpened(result.conversationId));
+        dispatch(messageAdded(result.userMessage));
+        dispatch(messageAdded(result.assistantMessage));
+        dispatch(requestFinished());
+        dispatch(voiceReset());
+        router.push({
+          pathname: '/(app)/conversation/[conversationId]',
+          params: { conversationId: result.conversationId },
+        });
+      } catch (error: unknown) {
+        if (mounted.current) dispatch(requestFailed(mapApiError(error).message));
+      }
+    } finally {
+      voiceActionInProgress.current = false;
     }
   };
 
@@ -139,7 +152,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
                 accessibilityLabel={recording ? 'Recording in progress' : 'Start voice recording'}
                 className="h-40 w-40 items-center justify-center overflow-hidden rounded-full bg-brand"
                 disabled={busy}
-                onPress={() => void (recording ? askUwaci() : begin())}
+                onPress={() => void askUwaci()}
               >
                 <AppIcon
                   color="#FFFFFF"
@@ -229,6 +242,7 @@ export function HomeScreen({ startRecording = false }: { startRecording?: boolea
           </Pressable>
           <Pressable
             className="min-h-20 w-28 items-center justify-center"
+            disabled={busy}
             onPress={() => void askUwaci()}
           >
             <View className="h-14 w-14 items-center justify-center rounded-full border-2 border-brand bg-lavender">

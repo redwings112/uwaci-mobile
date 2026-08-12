@@ -10,6 +10,8 @@ describe('voice state machine', () => {
   it('moves through recording and processing without overlapping flags', () => {
     let state = voiceReducer(undefined, voiceStatusChanged('requesting_permission'));
     state = voiceReducer(state, voiceStatusChanged('recording'));
+    state = voiceReducer(state, voiceStatusChanged('stopping'));
+    state = voiceReducer(state, voiceStatusChanged('processing_audio'));
     state = voiceReducer(
       state,
       recordingUpdated({ uri: 'file:///question.m4a', durationMillis: 1300 }),

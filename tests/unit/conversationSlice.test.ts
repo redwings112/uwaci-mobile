@@ -5,6 +5,8 @@ import {
   requestFailed,
   requestStarted,
 } from '@/features/conversation/state/conversationSlice';
+import { selectConversationRequest } from '@/features/conversation/state/selectors';
+import type { RootState } from '@/store';
 
 const message = {
   id: 'm1',
@@ -31,5 +33,15 @@ describe('conversation reducer', () => {
       messageReconciled({ optimisticId: 'local-1', message: { ...message, id: 'server-1' } }),
     );
     expect(state.messages).toEqual([{ ...message, id: 'server-1' }]);
+  });
+
+  it('returns a stable request selector reference while request state is unchanged', () => {
+    const state = {
+      conversation: conversationReducer(undefined, { type: 'test/initialized' }),
+    } as RootState;
+    const first = selectConversationRequest(state);
+    const second = selectConversationRequest(state);
+
+    expect(second).toBe(first);
   });
 });

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getLanguage } from '@/core/constants/languages';
@@ -9,7 +17,6 @@ import { mapApiError } from '@/core/errors/mapApiError';
 import { speechService } from '@/core/speech/speechService';
 import { useSubmitFeedbackMutation } from '@/features/feedback/api/feedbackApi';
 import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
-import { recordHistory } from '@/features/library/storage/libraryStorage';
 import type { FeedbackCategory } from '@/features/feedback/types';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
@@ -94,6 +101,10 @@ export function ConversationScreen({
     key: 0,
   });
   const initialActionHandled = useRef(false);
+  const mounted = useRef(true);
+  const microphoneActionInProgress = useRef(false);
+  const cancelRecorder = useRef(recorder.cancel);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const isLocalConversation = isDraftConversation(conversationId);
   const serverConversationId =
     activeConversationId && !isDraftConversation(activeConversationId)
@@ -103,9 +114,26 @@ export function ConversationScreen({
   const offline = network.initialized && network.isConnected === false;
 
   useEffect(() => {
+    cancelRecorder.current = recorder.cancel;
+  }, [recorder.cancel]);
+
+  useEffect(() => {
+    mounted.current = true;
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      mounted.current = false;
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     dispatch(conversationOpened(conversationId));
     return () => {
       void speechService.stop();
+      void cancelRecorder.current();
+      microphoneActionInProgress.current = false;
     };
   }, [conversationId, dispatch]);
 
@@ -115,6 +143,7 @@ export function ConversationScreen({
 
   const acceptResult = useCallback(
     async (result: QueryResult, optimisticMessageId?: string) => {
+      if (!mounted.current) return;
       dispatch(conversationOpened(result.conversationId));
       if (optimisticMessageId)
         dispatch(
@@ -123,12 +152,6 @@ export function ConversationScreen({
       else dispatch(messageAdded(result.userMessage));
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
-      void recordHistory({
-        conversationId: result.conversationId,
-        title: result.userMessage.content.slice(0, 48),
-        preview: result.assistantMessage.content.slice(0, 120),
-        updatedAt: result.assistantMessage.createdAt,
-      });
       setRecoveryTranscript(null);
       setSpeechNotice(null);
       if (voiceResponsesEnabled) {
@@ -140,12 +163,14 @@ export function ConversationScreen({
             onDone: () => dispatch(voiceStatusChanged('idle')),
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onUnavailable: () => {
+              if (!mounted.current) return;
               setSpeechNotice(
                 'No matching device voice is installed. The answer remains available as text.',
               );
               dispatch(voiceStatusChanged('idle'));
             },
             onError: () => {
+              if (!mounted.current) return;
               setSpeechNotice('This answer could not be read aloud. You can still read it below.');
               dispatch(voiceStatusChanged('idle'));
             },
@@ -207,46 +232,63 @@ export function ConversationScreen({
   );
 
   const handleMicrophone = async () => {
-    if (recorder.status === 'speaking') {
-      await speechService.stop();
-      dispatch(voiceStatusChanged('idle'));
-      return;
-    }
-    if (recorder.status !== 'recording') {
-      if (offline) {
-        dispatch(requestFailed('You are offline. Type a draft or reconnect to send.'));
-        return;
-      }
-      try {
-        await ensureAuthSession();
-      } catch {
-        router.push({
-          pathname: '/(auth)/sign-in',
-          params: { next: 'voice', conversationId },
-        });
-        return;
-      }
-      dispatch(requestErrorCleared());
-      setRecoveryTranscript(null);
-      await recorder.start();
-      return;
-    }
-    const recording = await recorder.stop();
-    if (!recording) return;
-    dispatch(requestStarted());
+    if (microphoneActionInProgress.current) return;
+    microphoneActionInProgress.current = true;
     try {
-      const result = await voiceQuery.submit({
-        uri: recording.uri,
-        preferredLanguage: language,
-        ...(serverConversationId ? { conversationId: serverConversationId } : {}),
-      });
-      await acceptResult(result);
-    } catch (error: unknown) {
-      const mapped = mapApiError(error);
-      const transcript = mapped.details?.transcript;
-      if (mapped.code === 'TRANSCRIPTION_LOW_CONFIDENCE' && typeof transcript === 'string')
-        setRecoveryTranscript(transcript);
-      dispatch(requestFailed(mapped.message));
+      if (recorder.status === 'speaking') {
+        await speechService.stop();
+        if (mounted.current) dispatch(voiceStatusChanged('idle'));
+        return;
+      }
+      if (recorder.status === 'idle' || recorder.status === 'error') {
+        try {
+          await ensureAuthSession();
+        } catch {
+          router.push({
+            pathname: '/(auth)/sign-in',
+            params: { next: 'voice', conversationId },
+          });
+          return;
+        }
+        if (!mounted.current) return;
+        dispatch(requestErrorCleared());
+        setRecoveryTranscript(null);
+        await recorder.start();
+        return;
+      }
+      if (recorder.status !== 'recording') return;
+
+      const recording = await recorder.stop();
+      if (!recording || !mounted.current) return;
+      dispatch(requestStarted());
+      try {
+        const result = await voiceQuery.submit({
+          uri: recording.uri,
+          preferredLanguage: language,
+          ...(serverConversationId ? { conversationId: serverConversationId } : {}),
+        });
+        if (mounted.current) await acceptResult(result);
+      } catch (error: unknown) {
+        if (!mounted.current) return;
+        const mapped = mapApiError(error);
+        const transcript = mapped.details?.transcript;
+        if (mapped.code === 'TRANSCRIPTION_LOW_CONFIDENCE' && typeof transcript === 'string')
+          setRecoveryTranscript(transcript);
+        dispatch(requestFailed(mapped.message));
+      }
+    } finally {
+      microphoneActionInProgress.current = false;
+    }
+  };
+
+  const cancelVoiceRecording = async () => {
+    if (microphoneActionInProgress.current) return;
+    microphoneActionInProgress.current = true;
+    try {
+      await recorder.cancel();
+      if (mounted.current) dispatch(requestErrorCleared());
+    } finally {
+      microphoneActionInProgress.current = false;
     }
   };
 
@@ -284,11 +326,25 @@ export function ConversationScreen({
   };
 
   const busy = request.status === 'sending' || voiceQuery.isLoading;
+  const microphoneDisabled =
+    busy ||
+    [
+      'requesting_permission',
+      'stopping',
+      'processing_audio',
+      'uploading',
+      'transcribing',
+      'thinking',
+      'response_received',
+    ].includes(recorder.status);
   return (
-    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
+    <SafeAreaView
+      className="flex-1 bg-canvas dark:bg-[#111126]"
+      edges={keyboardVisible ? ['top'] : ['top', 'bottom']}
+    >
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <AppHeader onMenu={() => router.push('/(app)/profile')} />
         <View className="flex-row items-center justify-between px-3 pb-2">
@@ -373,6 +429,7 @@ export function ConversationScreen({
                 }));
                 setRecoveryTranscript(null);
                 dispatch(requestErrorCleared());
+                dispatch(voiceReset());
               }}
             >
               <Text className="text-xs font-semibold text-brand">Edit transcript instead</Text>
@@ -388,6 +445,13 @@ export function ConversationScreen({
             <Text className="mt-1 text-xs text-muted">
               Tap the microphone again to stop and ask Uwaci.
             </Text>
+            <Pressable
+              accessibilityLabel="Cancel voice recording"
+              className="mt-1 min-h-9 items-center justify-center px-4"
+              onPress={() => void cancelVoiceRecording()}
+            >
+              <Text className="text-xs font-semibold text-danger">Cancel</Text>
+            </Pressable>
           </SurfaceCard>
         ) : null}
         {busy ? (
@@ -428,12 +492,14 @@ export function ConversationScreen({
         <ConversationComposer
           key={composerPrefill.key}
           autoFocus={focusComposer}
-          disabled={busy || recorder.status === 'recording'}
           initialValue={composerPrefill.value}
+          inputDisabled={busy || recorder.status === 'recording'}
+          microphoneActive={recorder.status === 'recording'}
+          microphoneDisabled={microphoneDisabled}
           onMicrophone={() => void handleMicrophone()}
           onSend={sendText}
         />
-        <BottomTabBar active="chat" />
+        {keyboardVisible ? null : <BottomTabBar active="chat" />}
         <FeedbackSheet
           visible={feedbackVisible}
           submitting={feedbackResult.isLoading}

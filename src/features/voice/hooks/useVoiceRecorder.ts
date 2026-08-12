@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { RecordingPresets, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 
 import {
@@ -25,6 +25,9 @@ export function useVoiceRecorder() {
   const voice = useAppSelector((state) => state.voice);
   const recorder = useAudioRecorder(recordingOptions);
   const recorderState = useAudioRecorderState(recorder, 100);
+  const mounted = useRef(true);
+  const operationInProgress = useRef(false);
+  const session = useRef(0);
 
   useEffect(() => {
     if (voice.status === 'recording')
@@ -33,14 +36,20 @@ export function useVoiceRecorder() {
       );
   }, [dispatch, recorder.uri, recorderState.durationMillis, voice.status]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      session.current += 1;
       void cancelAudioRecording(recorder);
-    },
-    [recorder],
-  );
+      dispatch(voiceReset());
+    };
+  }, [dispatch, recorder]);
 
   const start = useCallback(async () => {
+    if (operationInProgress.current || recorder.isRecording) return false;
+    operationInProgress.current = true;
+    const currentSession = ++session.current;
     try {
       deleteTemporaryRecording(voice.recordingUri);
       dispatch(recordingUpdated({ uri: null, durationMillis: 0 }));
@@ -52,33 +61,49 @@ export function useVoiceRecorder() {
           'Microphone access is required to ask a voice question. You can still type your question.',
         );
       await startAudioRecording(recorder);
-      dispatch(voiceStatusChanged('recording'));
+      if (mounted.current && currentSession === session.current)
+        dispatch(voiceStatusChanged('recording'));
+      return true;
     } catch (error: unknown) {
-      dispatch(
-        voiceFailed(error instanceof Error ? error.message : 'The microphone could not start.'),
-      );
+      await cancelAudioRecording(recorder).catch(() => undefined);
+      if (mounted.current && currentSession === session.current)
+        dispatch(
+          voiceFailed(error instanceof Error ? error.message : 'The microphone could not start.'),
+        );
+      return false;
+    } finally {
+      operationInProgress.current = false;
     }
   }, [dispatch, recorder, voice.recordingUri]);
 
   const stop = useCallback(async (): Promise<CompletedRecording | null> => {
+    if (operationInProgress.current || !recorder.uri) return null;
+    operationInProgress.current = true;
+    const currentSession = session.current;
     try {
-      dispatch(voiceStatusChanged('processing_audio'));
-      const recording = await stopAudioRecording(recorder, recorderState.durationMillis);
+      dispatch(voiceStatusChanged('stopping'));
+      const recording = await stopAudioRecording(recorder);
+      if (!mounted.current || currentSession !== session.current) return null;
       dispatch(recordingUpdated(recording));
+      dispatch(voiceStatusChanged('processing_audio'));
       return recording;
     } catch (error: unknown) {
-      dispatch(
-        voiceFailed(
-          error instanceof Error ? error.message : 'The recording could not be completed.',
-        ),
-      );
+      if (mounted.current && currentSession === session.current)
+        dispatch(
+          voiceFailed(
+            error instanceof Error ? error.message : 'The recording could not be completed.',
+          ),
+        );
       return null;
+    } finally {
+      operationInProgress.current = false;
     }
-  }, [dispatch, recorder, recorderState.durationMillis]);
+  }, [dispatch, recorder]);
 
   const cancel = useCallback(async () => {
+    session.current += 1;
     await cancelAudioRecording(recorder);
-    dispatch(voiceReset());
+    if (mounted.current) dispatch(voiceReset());
   }, [dispatch, recorder]);
 
   return {

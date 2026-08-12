@@ -5,6 +5,8 @@ const userMessages: Partial<Record<ErrorCode, string>> = {
   INVALID_AUDIO: 'That recording could not be used. Please record again.',
   AUDIO_TOO_LARGE: 'That recording is too large. Please ask a shorter question.',
   AUDIO_TOO_LONG: 'That recording is too long. Please ask a shorter question.',
+  AUDIO_UPLOAD_FAILED:
+    'The recording could not be uploaded to Uwaci. Your connection may be fine; please retry.',
   UNSUPPORTED_LANGUAGE: 'That language is not supported yet.',
   TRANSCRIPTION_FAILED: 'We could not understand the recording. Please try again.',
   TRANSCRIPTION_LOW_CONFIDENCE: 'Please try saying that again.',
@@ -18,6 +20,7 @@ const knownCodes = new Set<ErrorCode>([
   'INVALID_AUDIO',
   'AUDIO_TOO_LARGE',
   'AUDIO_TOO_LONG',
+  'AUDIO_UPLOAD_FAILED',
   'UNSUPPORTED_LANGUAGE',
   'TRANSCRIPTION_FAILED',
   'TRANSCRIPTION_LOW_CONFIDENCE',
@@ -44,8 +47,18 @@ export function mapApiError(value: unknown): AppError {
   if (!isRecord(value))
     return new AppError('UNKNOWN_ERROR', 'Something went wrong. Please try again.');
 
-  if (value.status === 'FETCH_ERROR' || value.status === 'TIMEOUT_ERROR') {
-    return new AppError('NETWORK_ERROR', userMessages.NETWORK_ERROR!, true);
+  if (value.status === 'TIMEOUT_ERROR') {
+    return new AppError('PROVIDER_TIMEOUT', userMessages.PROVIDER_TIMEOUT!, true, undefined, {
+      transportStatus: 'TIMEOUT_ERROR',
+    });
+  }
+
+  if (value.status === 'FETCH_ERROR') {
+    const transportError = typeof value.error === 'string' ? value.error : 'Request failed';
+    return new AppError('NETWORK_ERROR', userMessages.NETWORK_ERROR!, true, undefined, {
+      transportStatus: 'FETCH_ERROR',
+      transportError,
+    });
   }
 
   const envelope = isRecord(value.data) ? value.data : value;

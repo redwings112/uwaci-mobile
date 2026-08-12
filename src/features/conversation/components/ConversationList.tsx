@@ -15,6 +15,7 @@ export function ConversationList({
 }) {
   return (
     <FlatList
+      automaticallyAdjustKeyboardInsets
       className="flex-1"
       contentContainerClassName="grow px-3 py-3"
       data={messages}

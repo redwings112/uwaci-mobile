@@ -20,4 +20,21 @@ describe('network failure handling', () => {
     expect(error.details).toEqual({ transcript: 'Bonjour hello', confidence: 0.31 });
     expect(error.message).not.toContain('provider');
   });
+
+  it('does not blame connectivity when a native audio upload fails while connected', () => {
+    const error = mapApiError({
+      status: 'CUSTOM_ERROR',
+      error: 'Native request failed',
+      data: {
+        error: {
+          code: 'AUDIO_UPLOAD_FAILED',
+          details: { nativeError: 'UnableToUpload', platform: 'android' },
+        },
+      },
+    });
+
+    expect(error.code).toBe('AUDIO_UPLOAD_FAILED');
+    expect(error.message).toContain('could not be uploaded');
+    expect(error.message).not.toContain('Check your connection');
+  });
 });
