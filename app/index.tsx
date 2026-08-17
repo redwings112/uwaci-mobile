@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { Image, View } from 'react-native';
 
 import { secureStorage } from '@/core/storage/secureStorage';
 import { STORAGE_KEYS } from '@/core/storage/storageKeys';
+import { BrandLoadingScreen } from '@/features/onboarding/components/BrandLoadingScreen';
 
 export default function IndexRoute() {
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
@@ -18,19 +18,6 @@ export default function IndexRoute() {
     };
   }, []);
 
-  if (onboardingComplete === null)
-    return (
-      <View
-        className="flex-1 bg-black"
-        accessibilityLabel="Preparing Uwaci"
-        accessibilityRole="progressbar"
-      >
-        <Image
-          className="h-full w-full"
-          resizeMode="cover"
-          source={require('../assets/splash-icon.png')}
-        />
-      </View>
-    );
+  if (onboardingComplete === null) return <BrandLoadingScreen />;
   return <Redirect href={onboardingComplete ? '/(app)' : '/onboarding'} />;
 }

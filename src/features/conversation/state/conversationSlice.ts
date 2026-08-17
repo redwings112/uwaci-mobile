@@ -16,6 +16,15 @@ const initialState: ConversationState = {
   errorMessage: null,
 };
 
+// The backend remains the durable history. Keeping only the latest turns in Redux
+// prevents voice sessions from growing until React Native runs out of memory.
+export const MAX_IN_MEMORY_MESSAGES = 100;
+
+function trimMessages(messages: ConversationMessage[]): void {
+  if (messages.length > MAX_IN_MEMORY_MESSAGES)
+    messages.splice(0, messages.length - MAX_IN_MEMORY_MESSAGES);
+}
+
 const conversationSlice = createSlice({
   name: 'conversation',
   initialState,
@@ -25,12 +34,13 @@ const conversationSlice = createSlice({
       state.errorMessage = null;
     },
     conversationLoaded: (state, action: PayloadAction<ConversationMessage[]>) => {
-      state.messages = action.payload;
+      state.messages = action.payload.slice(-MAX_IN_MEMORY_MESSAGES);
       state.requestStatus = 'idle';
     },
     messageAdded: (state, action: PayloadAction<ConversationMessage>) => {
       if (!state.messages.some((message) => message.id === action.payload.id))
         state.messages.push(action.payload);
+      trimMessages(state.messages);
     },
     messageReconciled: (
       state,
@@ -42,6 +52,7 @@ const conversationSlice = createSlice({
       if (index >= 0) state.messages[index] = action.payload.message;
       else if (!state.messages.some((message) => message.id === action.payload.message.id))
         state.messages.push(action.payload.message);
+      trimMessages(state.messages);
     },
     requestStarted: (state) => {
       state.requestStatus = 'sending';

@@ -1,20 +1,13 @@
+import { i18n } from '@/localization';
+
 import { AppError } from './AppError';
 import type { ErrorCode } from './ErrorCode';
 
-const userMessages: Partial<Record<ErrorCode, string>> = {
-  INVALID_AUDIO: 'That recording could not be used. Please record again.',
-  AUDIO_TOO_LARGE: 'That recording is too large. Please ask a shorter question.',
-  AUDIO_TOO_LONG: 'That recording is too long. Please ask a shorter question.',
-  AUDIO_UPLOAD_FAILED:
-    'The recording could not be uploaded to Uwaci. Your connection may be fine; please retry.',
-  UNSUPPORTED_LANGUAGE: 'That language is not supported yet.',
-  TRANSCRIPTION_FAILED: 'We could not understand the recording. Please try again.',
-  TRANSCRIPTION_LOW_CONFIDENCE: 'Please try saying that again.',
-  PROVIDER_TIMEOUT: 'Uwaci is taking longer than expected. Please retry.',
-  RATE_LIMITED: 'Too many requests were sent. Please wait a moment and retry.',
-  AUTHENTICATION_REQUIRED: 'Please sign in again to continue.',
-  NETWORK_ERROR: 'Check your connection and try again.',
-};
+function userMessage(code: ErrorCode): string | undefined {
+  const key = `errors.${code}`;
+  const translated = i18n.t(key);
+  return translated === key ? undefined : translated;
+}
 
 const knownCodes = new Set<ErrorCode>([
   'INVALID_AUDIO',
@@ -48,17 +41,29 @@ export function mapApiError(value: unknown): AppError {
     return new AppError('UNKNOWN_ERROR', 'Something went wrong. Please try again.');
 
   if (value.status === 'TIMEOUT_ERROR') {
-    return new AppError('PROVIDER_TIMEOUT', userMessages.PROVIDER_TIMEOUT!, true, undefined, {
-      transportStatus: 'TIMEOUT_ERROR',
-    });
+    return new AppError(
+      'PROVIDER_TIMEOUT',
+      userMessage('PROVIDER_TIMEOUT') ?? 'Uwaci is taking longer than expected. Please retry.',
+      true,
+      undefined,
+      {
+        transportStatus: 'TIMEOUT_ERROR',
+      },
+    );
   }
 
   if (value.status === 'FETCH_ERROR') {
     const transportError = typeof value.error === 'string' ? value.error : 'Request failed';
-    return new AppError('NETWORK_ERROR', userMessages.NETWORK_ERROR!, true, undefined, {
-      transportStatus: 'FETCH_ERROR',
-      transportError,
-    });
+    return new AppError(
+      'NETWORK_ERROR',
+      userMessage('NETWORK_ERROR') ?? 'Check your connection and try again.',
+      true,
+      undefined,
+      {
+        transportStatus: 'FETCH_ERROR',
+        transportError,
+      },
+    );
   }
 
   const envelope = isRecord(value.data) ? value.data : value;
@@ -77,7 +82,7 @@ export function mapApiError(value: unknown): AppError {
 
   return new AppError(
     code,
-    userMessages[code] ?? 'Uwaci could not complete that request.',
+    userMessage(code) ?? 'Uwaci could not complete that request.',
     retryable,
     requestId,
     details,

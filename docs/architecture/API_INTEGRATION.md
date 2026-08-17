@@ -1,6 +1,6 @@
 # API integration
 
-All requests target `${EXPO_PUBLIC_API_BASE_URL}/api/v1`. RTK Query's base API adds `Accept` and an available `Authorization: Bearer <token>` header. Feature endpoints cover health, conversations, text queries, multipart voice queries, and feedback.
+All requests target `${EXPO_PUBLIC_API_BASE_URL}/api/v1`. RTK Query's base API adds `Accept` and an available `Authorization: Bearer <token>` header. Feature endpoints cover health, conversations, text queries, multipart voice queries, and feedback. Voice mode uses Expo's streaming fetch against `/voice/query/stream`; the standard endpoint remains the compatibility path.
 
 Success envelopes contain `success`, typed `data`, and request metadata. Failure envelopes are narrowed from `unknown` and mapped to user-safe `AppError` values. Raw JSON, HTTP diagnostics, provider messages, and stack traces are never shown to users.
 

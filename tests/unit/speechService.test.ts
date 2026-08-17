@@ -18,6 +18,15 @@ jest.mock('expo-speech', () => ({
   stop: jest.fn(async () => undefined),
 }));
 
+jest.mock('@/core/speech/naturalSpeechService', () => ({
+  naturalSpeechService: {
+    isAvailable: jest.fn(async () => false),
+    play: jest.fn(async () => 'unavailable'),
+    prewarm: jest.fn(),
+    stop: jest.fn(),
+  },
+}));
+
 describe('device speech language selection', () => {
   it('uses an exact locale and falls back to a compatible base language', () => {
     const voices = [{ language: 'en-GB' }, { language: 'fr-FR' }];
@@ -43,13 +52,13 @@ describe('speech-ready answer text', () => {
 
   it('narrates headings without reading Markdown markers', () => {
     expect(prepareTextForSpeech('### ABOUT A BOY\n\n#### History of a Boy', 'en-US')).toBe(
-      'Title. ABOUT A BOY. Subsection. History of a Boy.',
+      'ABOUT A BOY. History of a Boy.',
     );
   });
 
   it('treats a heading after introductory text as a section', () => {
     expect(prepareTextForSpeech('Here is the answer.\n\n### Background', 'en-US')).toBe(
-      'Here is the answer. Section. Background.',
+      'Here is the answer. Background.',
     );
   });
 
@@ -69,20 +78,35 @@ describe('speech-ready answer text', () => {
   it('does not vocalize fenced source code', () => {
     expect(
       prepareTextForSpeech('## Example\n```ts\nconst answer = true;\n```\nIt works.', 'en-US'),
-    ).toBe('Title. Example. It works.');
+    ).toBe('Example. It works.');
   });
 
   it('passes speech-ready text to the native speech engine', async () => {
     await speechService.speak('### About a Boy\n- A short history', { language: 'en-US' });
 
     expect(Speech.speak).toHaveBeenCalledWith(
-      'Title. About a Boy. A short history.',
+      'About a Boy. A short history.',
       expect.objectContaining({
         language: 'en-US',
         voice: 'enhanced-en',
-        rate: 0.94,
-        pitch: 1,
+        rate: 0.96,
+        pitch: 1.02,
       }),
     );
+  });
+
+  it('queues a complete sentence before the streamed answer finishes', async () => {
+    const session = await speechService.createStream({ language: 'en-US' }, 'streamed-answer');
+
+    session.enqueue('The first sentence is ready. ');
+    expect(Speech.speak).toHaveBeenCalledWith(
+      'The first sentence is ready.',
+      expect.objectContaining({ language: 'en-US', voice: 'enhanced-en' }),
+    );
+
+    session.enqueue('The final sentence arrives later');
+    expect(Speech.speak).toHaveBeenCalledTimes(1);
+    session.finish();
+    expect(Speech.speak).toHaveBeenCalledTimes(2);
   });
 });

@@ -47,6 +47,11 @@ export interface ApiQueryResult {
   language: ApiLanguageMetadata;
   transcription: ApiTranscription | null;
   voice_action?: ApiVoiceAction | null;
+  thinking?: {
+    name: 'transcribing' | 'reasoning' | 'saving';
+    status: 'completed';
+    duration_ms: number;
+  }[];
 }
 
 export function mapApiMessage(message: ApiMessage): ConversationMessage {
@@ -101,5 +106,9 @@ export function mapApiQueryResult(result: ApiQueryResult): QueryResult {
         }
       : {}),
     ...(result.voice_action ? { voiceAction: result.voice_action } : {}),
+    processing: (result.thinking ?? []).map((stage) => ({
+      name: stage.name,
+      durationMs: stage.duration_ms,
+    })),
   };
 }

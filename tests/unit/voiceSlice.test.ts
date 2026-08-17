@@ -4,6 +4,8 @@ import {
   voiceReducer,
   voiceReset,
   voiceStatusChanged,
+  voiceThinkingCompleted,
+  voiceThinkingStarted,
 } from '@/features/voice/state/voiceSlice';
 
 describe('voice state machine', () => {
@@ -30,6 +32,16 @@ describe('voice state machine', () => {
     expect(voiceReducer(failed, voiceReset())).toMatchObject({
       status: 'idle',
       errorMessage: null,
+    });
+  });
+
+  it('tracks measured streamed backend stages', () => {
+    let state = voiceReducer(undefined, voiceThinkingStarted('transcribing'));
+    state = voiceReducer(state, voiceThinkingCompleted({ stage: 'transcribing', durationMs: 420 }));
+    state = voiceReducer(state, voiceThinkingStarted('reasoning'));
+    expect(state.thinking).toEqual({
+      activeStage: 'reasoning',
+      completed: { transcribing: 420 },
     });
   });
 });

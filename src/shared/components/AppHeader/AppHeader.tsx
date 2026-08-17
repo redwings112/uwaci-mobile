@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 
 import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
+import { colors } from '@/theme/tokens';
 
 interface AppHeaderProps {
   onMenu?: () => void;
@@ -10,6 +11,7 @@ interface AppHeaderProps {
   actionIcon?: AppIconName;
   dark?: boolean;
   back?: boolean;
+  tagline?: boolean;
   onBack?: () => void;
 }
 
@@ -20,6 +22,7 @@ export function AppHeader({
   actionIcon = 'sparkle',
   dark = false,
   back = false,
+  tagline = false,
   onBack,
 }: AppHeaderProps) {
   return (
@@ -31,19 +34,19 @@ export function AppHeader({
         onPress={back ? onBack : onMenu}
       >
         <AppIcon
-          color={back ? '#215C45' : '#777789'}
+          color={back ? colors.brand : '#777789'}
           name={back ? 'arrowLeft' : 'menu'}
           size={28}
         />
       </Pressable>
-      <UwaciLogo compact dark={dark} />
+      <UwaciLogo compact dark={dark} tagline={tagline} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={actionLabel}
         className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface dark:border-white/10 dark:bg-[#1B1933]"
         onPress={onAction}
       >
-        <AppIcon color="#215C45" name={actionIcon} size={25} />
+        <AppIcon color={colors.brand} name={actionIcon} size={25} />
       </Pressable>
     </View>
   );

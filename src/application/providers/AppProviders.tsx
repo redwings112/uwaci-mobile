@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthSessionProvider } from './AuthSessionProvider';
+import { FontProvider } from './FontProvider';
 import { LocalizationProvider } from './LocalizationProvider';
 import { NetworkProvider } from './NetworkProvider';
 import { PreferencesProvider } from './PreferencesProvider';
@@ -11,17 +12,19 @@ import { ThemeProvider } from './ThemeProvider';
 export function AppProviders({ children }: PropsWithChildren) {
   return (
     <SafeAreaProvider>
-      <ReduxProvider>
-        <LocalizationProvider>
-          <AuthSessionProvider>
-            <NetworkProvider>
-              <PreferencesProvider>
-                <ThemeProvider>{children}</ThemeProvider>
-              </PreferencesProvider>
-            </NetworkProvider>
-          </AuthSessionProvider>
-        </LocalizationProvider>
-      </ReduxProvider>
+      <FontProvider>
+        <ReduxProvider>
+          <LocalizationProvider>
+            <AuthSessionProvider>
+              <NetworkProvider>
+                <PreferencesProvider>
+                  <ThemeProvider>{children}</ThemeProvider>
+                </PreferencesProvider>
+              </NetworkProvider>
+            </AuthSessionProvider>
+          </LocalizationProvider>
+        </ReduxProvider>
+      </FontProvider>
     </SafeAreaProvider>
   );
 }

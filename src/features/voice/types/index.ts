@@ -6,17 +6,23 @@ export type VoiceStatus =
   | 'stopping'
   | 'processing_audio'
   | 'uploading'
-  | 'transcribing'
-  | 'thinking'
   | 'response_received'
   | 'speaking'
   | 'error';
+
+export type VoiceThinkingStage = 'transcribing' | 'reasoning';
+
+export interface VoiceThinkingState {
+  activeStage: VoiceThinkingStage | null;
+  completed: Partial<Record<VoiceThinkingStage, number>>;
+}
 
 export interface VoiceState {
   status: VoiceStatus;
   recordingUri: string | null;
   durationMillis: number;
   errorMessage: string | null;
+  thinking: VoiceThinkingState;
 }
 
 export interface VoiceQueryInput {

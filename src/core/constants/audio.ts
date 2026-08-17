@@ -10,3 +10,5 @@ export function getVoiceUploadMetadata(): { fileName: string; mimeType: string }
   // Expo's high-quality Android/iOS preset records MPEG-4 AAC in an .m4a file.
   return { fileName: 'uwaci-question.m4a', mimeType: 'audio/x-m4a' };
 }
+
+export const VOICE_UPLOAD_TIMEOUT_MS = 45_000;

@@ -9,7 +9,7 @@ describe('LanguageSelector', () => {
     expect(screen.getByRole('radio', { name: 'English' }).props.accessibilityState.selected).toBe(
       true,
     );
-    fireEvent.press(screen.getByRole('radio', { name: 'Lingala, experimental' }));
+    fireEvent.press(screen.getByRole('radio', { name: 'Lingála, experimental' }));
     expect(onChange).toHaveBeenCalledWith('ln');
   });
 });

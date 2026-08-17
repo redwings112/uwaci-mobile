@@ -23,10 +23,18 @@ module.exports = {
         border: '#ECEAF2',
         lavender: '#F0ECFF',
         'lavender-dark': '#E4DDFE',
+        night: '#000000',
+        'night-muted': '#C7C7D1',
       },
       borderRadius: {
         card: '24px',
         control: '16px',
+      },
+      fontFamily: {
+        poppins: ['Poppins_400Regular'],
+        'poppins-medium': ['Poppins_500Medium'],
+        'poppins-semibold': ['Poppins_600SemiBold'],
+        'poppins-bold': ['Poppins_700Bold'],
       },
     },
   },

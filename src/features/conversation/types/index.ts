@@ -42,4 +42,8 @@ export interface QueryResult {
     type: 'language_changed';
     language: UwaciLanguageCode;
   };
+  processing: {
+    name: 'transcribing' | 'reasoning' | 'saving';
+    durationMs: number;
+  }[];
 }

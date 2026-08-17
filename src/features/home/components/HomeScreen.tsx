@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { ensureAuthSession } from '@/core/auth/authSession';
+import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { getLanguage } from '@/core/constants/languages';
 import { mapApiError } from '@/core/errors/mapApiError';
-import { speechService } from '@/core/speech/speechService';
+import { speechService, type SpeechStreamSession } from '@/core/speech/speechService';
 import { useSpeechPlayback } from '@/core/speech/useSpeechPlayback';
 import { useGetConversationQuery } from '@/features/conversation/api/conversationApi';
 import {
@@ -26,18 +28,31 @@ import {
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
+import { LiveTranscriptionCard } from '@/features/voice/components/LiveTranscriptionCard';
+import { VoiceActionRow } from '@/features/voice/components/VoiceActionRow';
 import { VoiceOrb } from '@/features/voice/components/VoiceOrb';
 import { VoiceTranscriptPanel } from '@/features/voice/components/VoiceTranscriptPanel';
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
-import { voiceFailed, voiceReset, voiceStatusChanged } from '@/features/voice/state/voiceSlice';
+import { useSilenceAutoSubmit } from '@/features/voice/hooks/useSilenceAutoSubmit';
+import {
+  voiceFailed,
+  voiceReset,
+  voiceStatusChanged,
+  voiceThinkingCompleted,
+  voiceThinkingReset,
+  voiceThinkingStarted,
+} from '@/features/voice/state/voiceSlice';
 import { getThinkingPrompt } from '@/features/voice/voicePrompts';
+import { registerVoiceTurnCanceller } from '@/features/voice/voiceTurnControl';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
+import { PrivacyNotice } from '@/shared/components/PrivacyNotice/PrivacyNotice';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { colors } from '@/theme/tokens';
 
 interface HomeScreenProps {
   startRecording?: boolean;
@@ -49,28 +64,33 @@ const busyStatuses = [
   'stopping',
   'processing_audio',
   'uploading',
-  'transcribing',
-  'thinking',
 ] as const;
 
 export function HomeScreen({ startRecording = false, conversationId }: HomeScreenProps) {
   const router = useRouter();
+  const { openMenu } = usePipeNavigation();
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
   const messages = useAppSelector(selectConversationMessages);
   const activeConversationId = useAppSelector(selectActiveConversationId);
   const requestError = useAppSelector((state) => state.conversation.errorMessage);
   const reduceMotion = useAppSelector((state) => state.settings.reduceMotion);
+  const thinking = useAppSelector((state) => state.voice.thinking);
   const recorder = useVoiceRecorder();
   const voiceQuery = useVoiceQuery();
   const playback = useSpeechPlayback();
   const [showLanguage, setShowLanguage] = useState(false);
   const [transcriptVisible, setTranscriptVisible] = useState(false);
-  const [thinkingPrompt, setThinkingPrompt] = useState<string | null>(null);
+  const [liveTranscript, setLiveTranscript] = useState<string | null>(null);
+  const [lastProcessingMs, setLastProcessingMs] = useState<number | null>(null);
   const initialActionHandled = useRef(false);
   const mounted = useRef(true);
   const voiceActionInProgress = useRef(false);
-  const turn = useRef(0);
+  const thinkingVisible = useRef(false);
+  const turnCancelled = useRef(false);
+  const handsFreeEnabled = useRef(true);
+  const streamSession = useRef<SpeechStreamSession | null>(null);
   const requestedConversationId =
     conversationId && conversationId !== 'new' ? conversationId : null;
   const remoteConversation = useGetConversationQuery(requestedConversationId ?? '', {
@@ -86,6 +106,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   useEffect(
     () => () => {
       mounted.current = false;
+      handsFreeEnabled.current = false;
       void speechService.stop();
     },
     [],
@@ -100,7 +121,32 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     if (remoteConversation.data) dispatch(conversationLoaded(remoteConversation.data.messages));
   }, [dispatch, remoteConversation.data]);
 
+  const leaveThinking = useCallback(() => {
+    if (!thinkingVisible.current) return;
+    thinkingVisible.current = false;
+    if (router.canGoBack()) router.back();
+  }, [router]);
+
+  const abortVoiceQuery = voiceQuery.abort;
+  const cancelVoiceTurn = useCallback(() => {
+    turnCancelled.current = true;
+    thinkingVisible.current = false;
+    abortVoiceQuery();
+    void streamSession.current?.cancel();
+    streamSession.current = null;
+    dispatch(requestFinished());
+    dispatch(requestErrorCleared());
+    dispatch(voiceReset());
+  }, [abortVoiceQuery, dispatch]);
+
+  useEffect(() => {
+    registerVoiceTurnCanceller(cancelVoiceTurn);
+    return () => registerVoiceTurnCanceller(null);
+  }, [cancelVoiceTurn]);
+
   const begin = useCallback(async () => {
+    turnCancelled.current = false;
+    handsFreeEnabled.current = true;
     try {
       await ensureAuthSession();
     } catch {
@@ -108,11 +154,21 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       return;
     }
     if (!mounted.current) return;
+    speechService.prewarm();
     await speechService.stop();
-    setThinkingPrompt(null);
+    setLiveTranscript(null);
+    setLastProcessingMs(null);
     dispatch(requestErrorCleared());
     await recorder.start();
   }, [dispatch, recorder, router]);
+
+  const resumeHandsFreeListening = useCallback(() => {
+    dispatch(voiceStatusChanged('idle'));
+    if (!mounted.current || !handsFreeEnabled.current || turnCancelled.current) return;
+    setTimeout(() => {
+      if (mounted.current && handsFreeEnabled.current && !turnCancelled.current) void begin();
+    }, 180);
+  }, [begin, dispatch]);
 
   useEffect(() => {
     if (initialActionHandled.current || !startRecording) return;
@@ -123,46 +179,81 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const completeVoiceTurn = async () => {
     const audio = await recorder.stop();
     if (!audio || !mounted.current) return;
-    const prompt = getThinkingPrompt(language, turn.current++);
-    setThinkingPrompt(prompt);
+    turnCancelled.current = false;
     dispatch(requestStarted());
-    void speechService.speak(
-      prompt,
-      { language: getLanguage(language).speechLocale, rate: 0.92 },
-      'voice-thinking',
-    );
-    try {
-      const result = await voiceQuery.submit({
-        uri: audio.uri,
-        preferredLanguage: language,
-        ...(serverConversationId ? { conversationId: serverConversationId } : {}),
+    dispatch(voiceThinkingReset());
+    dispatch(voiceThinkingStarted('transcribing'));
+    thinkingVisible.current = true;
+    router.push('/(app)/thinking');
+    const pendingSpeech: string[] = [];
+    let firstDelta = true;
+    const speechReady = speechService
+      .createStream(
+        {
+          language: getLanguage(language).speechLocale,
+          onDone: resumeHandsFreeListening,
+          onStopped: () => dispatch(voiceStatusChanged('idle')),
+          onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
+        },
+        `voice-stream-${Date.now()}`,
+      )
+      .then((session) => {
+        streamSession.current = session;
+        pendingSpeech.splice(0).forEach((chunk) => session.enqueue(chunk));
+        return session;
       });
+    try {
+      const result = await voiceQuery.submit(
+        {
+          uri: audio.uri,
+          preferredLanguage: language,
+          ...(serverConversationId ? { conversationId: serverConversationId } : {}),
+        },
+        {
+          onStage: (event) => {
+            if (event.status === 'active') dispatch(voiceThinkingStarted(event.stage));
+            else
+              dispatch(
+                voiceThinkingCompleted({ stage: event.stage, durationMs: event.durationMs ?? 0 }),
+              );
+          },
+          onTranscript: (text) => setLiveTranscript(text),
+          onDelta: (text) => {
+            if (turnCancelled.current) return;
+            if (firstDelta) {
+              firstDelta = false;
+              dispatch(voiceStatusChanged('speaking'));
+              leaveThinking();
+            }
+            if (streamSession.current) streamSession.current.enqueue(text);
+            else pendingSpeech.push(text);
+          },
+        },
+      );
       if (!mounted.current) return;
       dispatch(conversationOpened(result.conversationId));
+      setLiveTranscript(result.userMessage.content);
+      setLastProcessingMs(result.processing.reduce((total, stage) => total + stage.durationMs, 0));
       dispatch(messageAdded(result.userMessage));
       dispatch(messageAdded(result.assistantMessage));
       dispatch(requestFinished());
-      setThinkingPrompt(null);
-      const responseLanguage = result.voiceAction?.language ?? language;
       if (result.voiceAction?.type === 'language_changed')
         dispatch(preferredLanguageChanged(result.voiceAction.language));
-      dispatch(voiceStatusChanged('speaking'));
-      await speechService.speak(
-        result.assistantMessage.content,
-        {
-          language: getLanguage(responseLanguage).speechLocale,
-          onDone: () => dispatch(voiceStatusChanged('idle')),
-          onStopped: () => dispatch(voiceStatusChanged('idle')),
-          onError: () =>
-            dispatch(
-              voiceFailed('The spoken answer could not start. Tap the transcript to read it.'),
-            ),
-        },
-        result.assistantMessage.id,
-      );
+      const session = await speechReady;
+      if (turnCancelled.current) await session.cancel();
+      else {
+        if (firstDelta) {
+          leaveThinking();
+          dispatch(voiceStatusChanged('speaking'));
+          session.enqueue(result.assistantMessage.content);
+        }
+        session.finish();
+      }
     } catch (error: unknown) {
       if (!mounted.current) return;
-      setThinkingPrompt(null);
+      void streamSession.current?.cancel();
+      streamSession.current = null;
+      leaveThinking();
       dispatch(requestFailed(mapApiError(error).message));
     }
   };
@@ -173,7 +264,10 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     try {
       if (speaking && !recording) {
         await speechService.stop();
-        if (mounted.current) dispatch(voiceStatusChanged('idle'));
+        if (mounted.current) {
+          dispatch(voiceStatusChanged('idle'));
+          await begin();
+        }
       } else if (recording) await completeVoiceTurn();
       else if (!busy) await begin();
     } finally {
@@ -181,26 +275,38 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     }
   };
 
+  useSilenceAutoSubmit({
+    recording,
+    audioLevel: recorder.audioLevel,
+    durationMillis: recorder.durationMillis,
+    onSilence: () => void completeVoiceTurn(),
+  });
+
   const cancelRecording = async () => {
     if (!recording) return;
     await recorder.cancel();
     if (mounted.current) {
-      setThinkingPrompt(null);
+      handsFreeEnabled.current = false;
       dispatch(requestErrorCleared());
     }
   };
 
   const startNewVoiceConversation = async () => {
+    handsFreeEnabled.current = false;
     await speechService.stop();
     await recorder.cancel();
+    streamSession.current = null;
     dispatch(conversationReset());
     dispatch(voiceReset());
     setTranscriptVisible(false);
-    setThinkingPrompt(null);
+    setLiveTranscript(null);
+    setLastProcessingMs(null);
     router.replace('/(app)');
+    handsFreeEnabled.current = true;
   };
 
   const switchToType = async () => {
+    handsFreeEnabled.current = false;
     await speechService.stop();
     await recorder.cancel();
     router.push({
@@ -210,51 +316,55 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   };
 
   const statusTitle = recording
-    ? "I'm listening"
+    ? t('voice.listeningTitle')
     : busy
-      ? (thinkingPrompt ?? 'Uwaci is thinking')
+      ? thinking.activeStage
+        ? getThinkingPrompt(language, thinking.activeStage)
+        : t('voice.preparingAnswer')
       : speaking
-        ? 'Uwaci is speaking'
+        ? t('voice.speaking')
         : messages.length
-          ? 'Ready for your next question'
-          : 'Talk naturally with Uwaci';
+          ? t('voice.readyNext')
+          : t('voice.talkNaturally');
   const statusCaption = recording
-    ? 'Tap the orb when you are finished.'
+    ? t('voice.listeningCaption')
     : busy
-      ? 'I heard you. Your answer is on the way.'
+      ? t('voice.thinkingCaption')
       : speaking
-        ? 'Tap the moving orb to stop the answer.'
-        : 'Tap the orb, speak, then tap again to send.';
+        ? t('voice.speakingCaption')
+        : t('voice.idleCaption');
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader onMenu={() => router.push('/(app)/profile')} />
+      <AppHeader
+        actionIcon="messageSquare"
+        actionLabel={t('voice.newConversation')}
+        onAction={() => void startNewVoiceConversation()}
+        onMenu={() => openMenu('pipe0')}
+      />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-4 pb-5"
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center justify-center">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Choose voice conversation language"
+            accessibilityLabel={t('voice.chooseLanguage')}
             className="min-h-11 justify-center rounded-full border border-border bg-surface px-4"
             onPress={() => setShowLanguage((value) => !value)}
           >
             <View className="flex-row items-center gap-2">
-              <AppIcon color="#215C45" name="globe" size={19} />
+              <AppIcon color={colors.brand} name="globe" size={19} />
               <Text className="text-sm font-semibold text-brand">
+                {t('language.autoDetectShort')}
+              </Text>
+              <Text className="text-sm text-muted">·</Text>
+              <Text className="text-sm font-semibold text-ink dark:text-white">
                 {getLanguage(language).nativeLabel}
               </Text>
-              <AppIcon color="#215C45" name="chevronDown" size={17} />
+              <AppIcon color={colors.muted} name="chevronDown" size={17} />
             </View>
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Start a new voice conversation"
-            className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface"
-            onPress={() => void startNewVoiceConversation()}
-          >
-            <AppIcon color="#215C45" name="messageSquare" size={21} />
           </Pressable>
         </View>
         {showLanguage ? (
@@ -283,20 +393,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
           <Typography variant="caption" className="mt-2 max-w-72 text-center leading-5">
             {statusCaption}
           </Typography>
-          {recording ? (
-            <View className="mt-3 flex-row items-center gap-2 rounded-full bg-danger/10 px-4 py-2">
-              <View className="h-2.5 w-2.5 rounded-full bg-danger" />
-              <Text className="text-xs font-semibold text-danger">
-                Listening · {Math.floor(recorder.durationMillis / 1000)}s
-              </Text>
-              <Pressable
-                accessibilityLabel="Cancel recording"
-                onPress={() => void cancelRecording()}
-              >
-                <Text className="ml-2 text-xs font-semibold text-danger underline">Cancel</Text>
-              </Pressable>
-            </View>
-          ) : null}
         </View>
 
         {requestError || recorder.errorMessage ? (
@@ -307,41 +403,71 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
           </SurfaceCard>
         ) : null}
 
-        <View className="mt-4 flex-row justify-center gap-3">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              transcriptVisible ? 'Hide voice transcript' : 'Show voice transcript'
-            }
-            className={`min-h-12 flex-1 flex-row items-center justify-center rounded-full border px-4 ${transcriptVisible ? 'border-brand bg-lavender' : 'border-border bg-surface'}`}
-            onPress={() => setTranscriptVisible((value) => !value)}
-          >
-            <AppIcon color="#215C45" name="fileText" size={20} />
-            <Text className="ml-2 text-sm font-semibold text-brand">
-              {transcriptVisible ? 'Hide transcript' : 'Transcript'}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Switch to typed chat"
-            className="min-h-12 flex-1 flex-row items-center justify-center rounded-full border border-border bg-surface px-4"
-            onPress={() => void switchToType()}
-          >
-            <AppIcon color="#215C45" name="keyboard" size={21} />
-            <Text className="ml-2 text-sm font-semibold text-brand">Type instead</Text>
-          </Pressable>
-        </View>
+        {recording || liveTranscript ? (
+          <View className="mt-4">
+            <LiveTranscriptionCard
+              listening={recording}
+              placeholder={t('voice.transcriptPlaceholder')}
+              reduceMotion={reduceMotion}
+              statusLabel={
+                recording
+                  ? t('voice.listeningSeconds', {
+                      seconds: Math.floor(recorder.durationMillis / 1000),
+                    })
+                  : lastProcessingMs != null
+                    ? t('voice.readyInSeconds', {
+                        seconds: Math.max(0.1, lastProcessingMs / 1000).toFixed(1),
+                      })
+                    : ''
+              }
+              transcript={liveTranscript}
+            />
+          </View>
+        ) : null}
+
+        {recording ? (
+          <View className="mt-5">
+            <VoiceActionRow
+              askDisabled={voiceQuery.isLoading}
+              onAsk={() => void handleOrbPress()}
+              onCancel={() => void cancelRecording()}
+              onTypeInstead={() => void switchToType()}
+            />
+          </View>
+        ) : (
+          <View className="mt-4 flex-row justify-center gap-3">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                transcriptVisible ? t('voice.hideTranscript') : t('voice.showTranscript')
+              }
+              className={`min-h-12 flex-1 flex-row items-center justify-center rounded-full border px-4 ${transcriptVisible ? 'border-brand bg-lavender' : 'border-border bg-surface'}`}
+              onPress={() => setTranscriptVisible((value) => !value)}
+            >
+              <AppIcon color={colors.brand} name="fileText" size={20} />
+              <Text className="ml-2 text-sm font-semibold text-brand">
+                {transcriptVisible ? t('voice.hideTranscript') : t('voice.showTranscript')}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('voice.openChat')}
+              className="min-h-12 flex-1 flex-row items-center justify-center rounded-full border border-border bg-surface px-4"
+              onPress={() => void switchToType()}
+            >
+              <AppIcon color={colors.brand} name="keyboard" size={21} />
+              <Text className="ml-2 text-sm font-semibold text-brand">{t('voice.openChat')}</Text>
+            </Pressable>
+          </View>
+        )}
 
         {transcriptVisible ? <VoiceTranscriptPanel messages={messages} /> : null}
 
-        <View className="mt-4 flex-row items-start rounded-2xl bg-lavender/70 px-4 py-3 dark:bg-white/5">
-          <AppIcon color="#6F45EF" name="sparkle" size={19} />
-          <Text className="ml-2 flex-1 text-xs leading-5 text-muted">
-            You can say “switch language to French”, English, Lingala, or Swahili at any time.
-          </Text>
+        <View className="mt-4">
+          <PrivacyNotice onPress={() => router.push('/(app)/privacy')} />
         </View>
       </ScrollView>
-      <BottomTabBar active="chat" showSpeechControls={false} />
+      <BottomTabBar active="home" showSpeechControls={false} />
     </SafeAreaView>
   );
 }

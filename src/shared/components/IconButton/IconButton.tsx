@@ -1,6 +1,7 @@
 import { Pressable, type PressableProps } from 'react-native';
 
 import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
+import { colors } from '@/theme/tokens';
 
 interface IconButtonProps extends PressableProps {
   label: string;
@@ -16,7 +17,7 @@ export function IconButton({ label, icon, className = '', ...props }: IconButton
       className={`h-12 w-12 items-center justify-center rounded-full ${className}`}
       {...props}
     >
-      <AppIcon color="#215C45" name={icon} size={27} />
+      <AppIcon color={colors.brand} name={icon} size={27} />
     </Pressable>
   );
 }

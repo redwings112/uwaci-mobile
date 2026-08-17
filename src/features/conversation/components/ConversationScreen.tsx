@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { getLanguage } from '@/core/constants/languages';
+import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { ensureAuthSession } from '@/core/auth/authSession';
 import { mapApiError } from '@/core/errors/mapApiError';
 import { speechService } from '@/core/speech/speechService';
@@ -24,15 +26,17 @@ import { selectPreferredLanguage } from '@/features/language/state/selectors';
 import { RecordingIndicator } from '@/features/voice/components/RecordingIndicator';
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
+import { useSilenceAutoSubmit } from '@/features/voice/hooks/useSilenceAutoSubmit';
 import { voiceReset, voiceStatusChanged } from '@/features/voice/state/voiceSlice';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
-import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
 import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
 import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { colors } from '@/theme/tokens';
 
 import { useGetConversationQuery, useSendTextQueryMutation } from '../api/conversationApi';
 import {
@@ -63,10 +67,10 @@ interface ConversationScreenProps {
   focusComposer?: boolean;
 }
 
-const suggestions = [
-  'Business ideas with a small budget',
-  'How should I set my prices?',
-  'Strategies to find customers',
+const suggestions: readonly { label: string; icon: AppIconName }[] = [
+  { label: 'Business ideas with a small budget', icon: 'lightbulb' },
+  { label: 'How should I set my prices?', icon: 'activity' },
+  { label: 'Strategies to find customers', icon: 'profile' },
 ];
 
 function isDraftConversation(value: string): boolean {
@@ -80,6 +84,8 @@ export function ConversationScreen({
   focusComposer = false,
 }: ConversationScreenProps) {
   const router = useRouter();
+  const { openMenu } = usePipeNavigation();
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectConversationMessages);
   const activeConversationId = useAppSelector(selectActiveConversationId);
@@ -174,7 +180,7 @@ export function ConversationScreen({
             },
             onError: () => {
               if (!mounted.current) return;
-              setSpeechNotice('This answer could not be read aloud. You can still read it below.');
+              setSpeechNotice(t('conversation.speechUnavailable'));
               dispatch(voiceStatusChanged('idle'));
             },
           },
@@ -182,13 +188,13 @@ export function ConversationScreen({
         );
       } else dispatch(voiceStatusChanged('idle'));
     },
-    [dispatch, language, voiceResponsesEnabled],
+    [dispatch, language, t, voiceResponsesEnabled],
   );
 
   const sendText = useCallback(
     async (text: string) => {
       if (offline) {
-        dispatch(requestFailed('Check your connection and try again.'));
+        dispatch(requestFailed(t('conversation.connectionError')));
         return;
       }
       try {
@@ -225,6 +231,7 @@ export function ConversationScreen({
     [
       acceptResult,
       conversationId,
+      t,
       dispatch,
       language,
       offline,
@@ -240,7 +247,10 @@ export function ConversationScreen({
     try {
       if (recorder.status === 'speaking') {
         await speechService.stop();
-        if (mounted.current) dispatch(voiceStatusChanged('idle'));
+        if (mounted.current) {
+          dispatch(voiceStatusChanged('idle'));
+          await recorder.start();
+        }
         return;
       }
       if (recorder.status === 'idle' || recorder.status === 'error') {
@@ -270,7 +280,8 @@ export function ConversationScreen({
           preferredLanguage: language,
           ...(serverConversationId ? { conversationId: serverConversationId } : {}),
         });
-        if (mounted.current) await acceptResult(result);
+        if (!mounted.current) return;
+        await acceptResult(result);
       } catch (error: unknown) {
         if (!mounted.current) return;
         const mapped = mapApiError(error);
@@ -283,6 +294,13 @@ export function ConversationScreen({
       microphoneActionInProgress.current = false;
     }
   };
+
+  useSilenceAutoSubmit({
+    recording: recorder.status === 'recording',
+    audioLevel: recorder.audioLevel,
+    durationMillis: recorder.durationMillis,
+    onSilence: () => void handleMicrophone(),
+  });
 
   const cancelVoiceRecording = async () => {
     if (microphoneActionInProgress.current) return;
@@ -344,8 +362,6 @@ export function ConversationScreen({
       'stopping',
       'processing_audio',
       'uploading',
-      'transcribing',
-      'thinking',
       'response_received',
     ].includes(recorder.status);
   return (
@@ -357,39 +373,30 @@ export function ConversationScreen({
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <AppHeader onMenu={() => router.push('/(app)/profile')} />
+        <AppHeader onMenu={() => openMenu('pipe0')} />
         <View className="flex-row items-center justify-between px-3 pb-2">
           <Pressable
             className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
             onPress={() => setShowLanguage((value) => !value)}
           >
             <View className="flex-row items-center gap-1.5">
-              <AppIcon color="#215C45" name="globe" size={18} />
+              <AppIcon color={colors.brand} name="globe" size={18} />
               <Text className="text-xs font-semibold text-brand">
-                Auto-detect · {getLanguage(language).nativeLabel}
+                {t('language.autoDetect', { language: getLanguage(language).nativeLabel })}
               </Text>
-              <AppIcon color="#215C45" name="chevronDown" size={16} />
+              <AppIcon color={colors.brand} name="chevronDown" size={16} />
             </View>
           </Pressable>
-          <View className="flex-row gap-2">
-            <Pressable
-              accessibilityLabel="Switch to voice mode"
-              className="min-h-9 items-center justify-center rounded-full border border-brand bg-lavender px-3"
-              onPress={openVoiceMode}
-            >
-              <View className="flex-row items-center gap-1.5">
-                <AppIcon color="#215C45" name="mic" size={17} />
-                <Text className="text-xs font-semibold text-brand">Voice</Text>
-              </View>
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Start new chat"
-              className="h-9 w-9 items-center justify-center rounded-full border border-border bg-surface"
-              onPress={startNewConversation}
-            >
-              <AppIcon color="#215C45" name="messageSquare" size={18} />
-            </Pressable>
-          </View>
+          <Pressable
+            accessibilityLabel="Start new chat"
+            className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
+            onPress={startNewConversation}
+          >
+            <View className="flex-row items-center gap-1.5">
+              <AppIcon color={colors.brand} name="messageSquare" size={17} />
+              <Text className="text-xs font-semibold text-brand">{t('conversation.newChat')}</Text>
+            </View>
+          </Pressable>
         </View>
         {showLanguage ? (
           <View className="z-10 px-3 pb-2">
@@ -411,8 +418,8 @@ export function ConversationScreen({
         {offline ? (
           <View className="px-3 pb-2">
             <StatusBanner
-              title="You’re offline"
-              message="Reconnect before sending a voice or text question."
+              title={t('conversation.offlineTitle')}
+              message={t('conversation.offlineMessage')}
               variant="warning"
             />
           </View>
@@ -420,7 +427,7 @@ export function ConversationScreen({
         {auth.status === 'error' && auth.errorMessage ? (
           <View className="px-3 pb-2">
             <StatusBanner
-              title="Secure session unavailable"
+              title={t('conversation.sessionTitle')}
               message={auth.errorMessage}
               variant="error"
             />
@@ -428,13 +435,15 @@ export function ConversationScreen({
         ) : null}
         {speechNotice ? (
           <View className="px-3 pb-2">
-            <StatusBanner title="Spoken response unavailable" message={speechNotice} />
+            <StatusBanner title={t('conversation.speechTitle')} message={speechNotice} />
           </View>
         ) : null}
         {request.errorMessage || recorder.errorMessage ? (
           <View className="px-3">
             <ErrorState
-              message={request.errorMessage ?? recorder.errorMessage ?? 'Voice failed.'}
+              message={
+                request.errorMessage ?? recorder.errorMessage ?? t('conversation.voiceFailed')
+              }
             />
           </View>
         ) : null}
@@ -453,7 +462,9 @@ export function ConversationScreen({
                 dispatch(voiceReset());
               }}
             >
-              <Text className="text-xs font-semibold text-brand">Edit transcript instead</Text>
+              <Text className="text-xs font-semibold text-brand">
+                {t('conversation.editTranscript')}
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -463,9 +474,7 @@ export function ConversationScreen({
               durationMillis={recorder.durationMillis}
               audioLevel={recorder.audioLevel}
             />
-            <Text className="mt-1 text-xs text-muted">
-              Tap the microphone again to stop and ask Uwaci.
-            </Text>
+            <Text className="mt-1 text-xs text-muted">{t('conversation.stopHint')}</Text>
             <Pressable
               accessibilityLabel="Cancel voice recording"
               className="mt-1 min-h-9 items-center justify-center px-4"
@@ -477,17 +486,19 @@ export function ConversationScreen({
         ) : null}
         {busy ? (
           <Typography className="px-3 py-1 text-center text-muted" accessibilityLiveRegion="polite">
-            Uwaci is thinking…
+            {t('voice.thinking')}
           </Typography>
         ) : null}
 
         {messages.some((message) => message.role === 'assistant') ? (
           <View className="pb-1">
             <View className="flex-row items-center justify-between px-3">
-              <Text className="text-xs font-semibold text-muted">Suggestions</Text>
+              <Text className="text-xs font-semibold text-muted">
+                {t('conversation.suggestions')}
+              </Text>
               <Pressable onPress={() => setFeedbackVisible(true)}>
                 <View className="flex-row items-center gap-1">
-                  <Text className="text-xs text-muted">Why these?</Text>
+                  <Text className="text-xs text-muted">{t('conversation.whyThese')}</Text>
                   <AppIcon color="#777789" name="info" size={16} />
                 </View>
               </Pressable>
@@ -499,12 +510,19 @@ export function ConversationScreen({
             >
               {suggestions.map((suggestion) => (
                 <Pressable
-                  key={suggestion}
-                  className="min-h-10 max-w-40 justify-center rounded-control border border-border bg-surface px-3"
+                  key={suggestion.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={suggestion.label}
+                  className="min-h-10 w-44 flex-row items-center gap-2 rounded-control border border-border bg-surface px-3 py-2"
                   disabled={busy}
-                  onPress={() => void sendText(suggestion)}
+                  onPress={() => void sendText(suggestion.label)}
                 >
-                  <Text className="text-xs text-ink dark:text-white">{suggestion}</Text>
+                  <View className="h-6 w-6 items-center justify-center rounded-full bg-lavender">
+                    <AppIcon color={colors.brand} name={suggestion.icon} size={13} />
+                  </View>
+                  <Text className="flex-1 text-xs text-ink dark:text-white">
+                    {suggestion.label}
+                  </Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -515,12 +533,15 @@ export function ConversationScreen({
           autoFocus={focusComposer}
           initialValue={composerPrefill.value}
           inputDisabled={busy || recorder.status === 'recording'}
+          sending={busy}
           microphoneActive={recorder.status === 'recording'}
           microphoneDisabled={microphoneDisabled}
           onMicrophone={() => void handleMicrophone()}
+          onPrivacy={() => router.push('/(app)/privacy')}
+          onVoiceMode={openVoiceMode}
           onSend={sendText}
         />
-        {keyboardVisible ? null : <BottomTabBar active="chat" />}
+        {keyboardVisible ? null : <BottomTabBar active="home" />}
         <FeedbackSheet
           visible={feedbackVisible}
           submitting={feedbackResult.isLoading}

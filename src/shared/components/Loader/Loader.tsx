@@ -1,6 +1,7 @@
 import { ActivityIndicator, View } from 'react-native';
 
 import { Typography } from '@/shared/components/Typography/Typography';
+import { colors } from '@/theme/tokens';
 
 interface LoaderProps {
   fullScreen?: boolean;
@@ -14,7 +15,7 @@ export function Loader({ fullScreen = false, label = 'Loading' }: LoaderProps) {
       accessibilityRole="progressbar"
       accessibilityLabel={label}
     >
-      <ActivityIndicator color="#215C45" size="large" />
+      <ActivityIndicator color={colors.brand} size="large" />
       <Typography className="text-muted">{label}</Typography>
     </View>
   );

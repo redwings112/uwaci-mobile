@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { ActivityIndicator, Pressable, type PressableProps } from 'react-native';
 
 import { Typography } from '@/shared/components/Typography/Typography';
+import { colors } from '@/theme/tokens';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -35,7 +36,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={lightText ? '#FFFFFF' : '#215C45'} />
+        <ActivityIndicator color={lightText ? '#FFFFFF' : colors.brand} />
       ) : (
         <Typography variant="label" className={lightText ? 'text-white' : 'text-ink'}>
           {children}

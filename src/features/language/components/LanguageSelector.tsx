@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { UWACI_LANGUAGES, type UwaciLanguageCode } from '@/core/constants/languages';
 import { Typography } from '@/shared/components/Typography/Typography';
@@ -10,6 +11,7 @@ interface LanguageSelectorProps {
 }
 
 export function LanguageSelector({ value, onChange, compact = false }: LanguageSelectorProps) {
+  const { t } = useTranslation();
   return (
     <ScrollView
       horizontal
@@ -24,7 +26,7 @@ export function LanguageSelector({ value, onChange, compact = false }: LanguageS
             key={language.code}
             accessibilityRole="radio"
             accessibilityState={{ selected }}
-            accessibilityLabel={`${language.label}${language.isExperimental ? ', experimental' : ''}`}
+            accessibilityLabel={`${language.nativeLabel}${language.isExperimental ? `, ${t('language.experimental')}` : ''}`}
             className={`min-h-12 justify-center rounded-full border px-4 ${selected ? 'border-brand bg-brand' : 'border-border bg-surface'}`}
             onPress={() => onChange(language.code)}
           >

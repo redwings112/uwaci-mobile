@@ -4,7 +4,7 @@ const optionalUrl = z.union([z.literal(''), z.string().url()]).default('');
 
 const envSchema = z.object({
   appEnv: z.enum(['development', 'preview', 'production', 'test']).default('development'),
-  apiBaseUrl: z.string().url().default('https://uwaci-backend.vercel.app'),
+  apiBaseUrl: z.string().url('Invalid API Base URL format'),
   supabaseUrl: optionalUrl,
   supabaseAnonKey: z.string().default(''),
 });
@@ -17,7 +17,10 @@ const parsed = envSchema.safeParse({
 });
 
 if (!parsed.success) {
-  throw new Error(`Invalid public application configuration: ${parsed.error.issues[0]?.message}`);
+  const issue = parsed.error.issues[0];
+  throw new Error(
+    `Invalid public application configuration: [${issue?.path.join('.')}] ${issue?.message}`,
+  );
 }
 
 export const env = parsed.data;

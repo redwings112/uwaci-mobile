@@ -1,17 +1,18 @@
 import { Modal, Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/Button/Button';
 import { Typography } from '@/shared/components/Typography/Typography';
 
 import type { FeedbackCategory } from '../types';
 
-const options: readonly { value: FeedbackCategory; label: string }[] = [
-  { value: 'helpful', label: 'Helpful' },
-  { value: 'not_helpful', label: 'Not helpful' },
-  { value: 'transcription_problem', label: 'Transcription problem' },
-  { value: 'wrong_language', label: 'Wrong language' },
-  { value: 'incorrect_answer', label: 'Incorrect answer' },
-  { value: 'audio_problem', label: 'Audio problem' },
+const options: readonly FeedbackCategory[] = [
+  'helpful',
+  'not_helpful',
+  'transcription_problem',
+  'wrong_language',
+  'incorrect_answer',
+  'audio_problem',
 ];
 
 interface FeedbackSheetProps {
@@ -27,6 +28,7 @@ export function FeedbackSheet({
   onClose,
   onSubmit,
 }: FeedbackSheetProps) {
+  const { t } = useTranslation();
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <Pressable
@@ -39,17 +41,17 @@ export function FeedbackSheet({
           onPress={(event) => event.stopPropagation()}
           accessibilityViewIsModal
         >
-          <Typography variant="title">Help improve Uwaci</Typography>
-          <Typography className="text-muted">What best describes this response?</Typography>
+          <Typography variant="title">{t('feedback.title')}</Typography>
+          <Typography className="text-muted">{t('feedback.prompt')}</Typography>
           <View className="gap-2">
             {options.map((option) => (
               <Button
-                key={option.value}
+                key={option}
                 variant="secondary"
                 disabled={submitting}
-                onPress={() => onSubmit(option.value)}
+                onPress={() => onSubmit(option)}
               >
-                {option.label}
+                {t(`feedback.${option}`)}
               </Button>
             ))}
           </View>

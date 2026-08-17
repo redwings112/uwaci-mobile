@@ -1,10 +1,13 @@
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, Text, View } from 'react-native';
 
 import { speechService } from '@/core/speech/speechService';
 import { useSpeechPlayback } from '@/core/speech/useSpeechPlayback';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+import { colors } from '@/theme/tokens';
 
 export function SpeechControlBar() {
+  const { t } = useTranslation();
   const playback = useSpeechPlayback();
   if (playback.status === 'idle') return null;
 
@@ -19,9 +22,9 @@ export function SpeechControlBar() {
       </View>
       <View className="ml-3 flex-1">
         <Text className="text-sm font-semibold text-ink dark:text-white">
-          {paused ? 'Spoken answer paused' : 'Uwaci is speaking'}
+          {paused ? t('voice.paused') : t('voice.speaking')}
         </Text>
-        <Text className="mt-0.5 text-xs text-muted">Playback stays available across screens.</Text>
+        <Text className="mt-0.5 text-xs text-muted">{t('voice.playbackHint')}</Text>
       </View>
       {Platform.OS !== 'android' ? (
         <Pressable
@@ -30,7 +33,7 @@ export function SpeechControlBar() {
           className="h-11 w-11 items-center justify-center rounded-full"
           onPress={() => void (paused ? speechService.resume() : speechService.pause())}
         >
-          <AppIcon color="#215C45" name={paused ? 'play' : 'pause'} size={25} />
+          <AppIcon color={colors.brand} name={paused ? 'play' : 'pause'} size={25} />
         </Pressable>
       ) : null}
       <Pressable

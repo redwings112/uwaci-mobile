@@ -1,4 +1,5 @@
 import {
+  MAX_IN_MEMORY_MESSAGES,
   conversationReducer,
   messageAdded,
   messageReconciled,
@@ -43,5 +44,18 @@ describe('conversation reducer', () => {
     const second = selectConversationRequest(state);
 
     expect(second).toBe(first);
+  });
+
+  it('bounds long sessions while retaining the newest messages', () => {
+    let state = conversationReducer(undefined, { type: 'test/initialized' });
+    for (let index = 0; index <= MAX_IN_MEMORY_MESSAGES; index += 1) {
+      state = conversationReducer(
+        state,
+        messageAdded({ ...message, id: `message-${index}`, content: String(index) }),
+      );
+    }
+    expect(state.messages).toHaveLength(MAX_IN_MEMORY_MESSAGES);
+    expect(state.messages[0]?.content).toBe('1');
+    expect(state.messages.at(-1)?.content).toBe(String(MAX_IN_MEMORY_MESSAGES));
   });
 });

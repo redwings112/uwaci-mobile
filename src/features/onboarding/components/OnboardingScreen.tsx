@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +49,7 @@ function ActionCard({
 }
 
 export function OnboardingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
@@ -75,10 +77,8 @@ export function OnboardingScreen() {
       <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
         <AppHeader back onBack={() => setShowLanguage(false)} />
         <View className="flex-1 px-5 pt-6">
-          <Typography variant="title">Choose your language</Typography>
-          <Typography className="mt-2 text-muted">
-            Your conversation language can change any time.
-          </Typography>
+          <Typography variant="title">{t('onboarding.chooseLanguage')}</Typography>
+          <Typography className="mt-2 text-muted">{t('onboarding.languageHint')}</Typography>
           <View className="mt-6">
             <LanguageSelector
               value={language}
@@ -89,7 +89,7 @@ export function OnboardingScreen() {
             className="mt-8 min-h-12 items-center justify-center rounded-control bg-brand"
             onPress={() => setShowLanguage(false)}
           >
-            <Text className="font-semibold text-white">Continue</Text>
+            <Text className="font-semibold text-white">{t('common.continue')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -108,34 +108,34 @@ export function OnboardingScreen() {
           />
           <Text className="text-4xl font-semibold tracking-[6px] text-white">Uwaci</Text>
           <Text className="mt-2 text-xs font-semibold tracking-[3px] text-accent">
-            KNOWLEDGE FOR HUMANITY
+            {t('onboarding.tagline')}
           </Text>
           <Text className="mt-7 text-center text-2xl font-semibold text-white">
-            Welcome to <Text className="text-violet">Uwaci</Text>
+            {t('onboarding.welcome')} <Text className="text-violet">Uwaci</Text>
           </Text>
           <Text className="mt-3 text-center text-base leading-6 text-white/80">
-            Digitize, update, and use{`\n`}your realities on your own terms.
+            {t('onboarding.intro')}
           </Text>
         </View>
 
         <View>
           <ActionCard
             icon="mic"
-            title="Speak to Uwaci"
-            subtitle="Tap and start speaking"
+            title={t('onboarding.speakTitle')}
+            subtitle={t('onboarding.speakSubtitle')}
             tone="blue"
             onPress={() => void openChat('voice')}
           />
           <ActionCard
             icon="keyboard"
-            title="Type to Uwaci"
-            subtitle="Chat using text"
+            title={t('onboarding.typeTitle')}
+            subtitle={t('onboarding.typeSubtitle')}
             tone="violet"
             onPress={() => void openChat('text')}
           />
           <View className="my-2 flex-row items-center justify-center">
             <View className="h-px flex-1 bg-white/10" />
-            <Text className="mx-3 text-xs text-white/50">OR</Text>
+            <Text className="mx-3 text-xs text-white/50">{t('common.or')}</Text>
             <View className="h-px flex-1 bg-white/10" />
           </View>
           <View className="flex-row items-center justify-center">
@@ -145,7 +145,7 @@ export function OnboardingScreen() {
             >
               <View className="flex-row items-center gap-2">
                 <AppIcon color="#FFFFFF" name="logIn" size={20} />
-                <Text className="text-sm text-white">Sign In</Text>
+                <Text className="text-sm text-white">{t('onboarding.signIn')}</Text>
               </View>
             </Pressable>
             <View className="h-6 w-px bg-white/20" />
@@ -155,17 +155,20 @@ export function OnboardingScreen() {
             >
               <View className="flex-row items-center gap-2">
                 <AppIcon color="#FFFFFF" name="userPlus" size={20} />
-                <Text className="text-sm text-white">Create Account</Text>
+                <Text className="text-sm text-white">{t('onboarding.createAccount')}</Text>
               </View>
             </Pressable>
           </View>
           <Text className="mt-3 text-center text-xs leading-5 text-white/50">
-            By continuing, you agree to our{`\n`}
-            <Text className="text-brand">Terms of Service</Text> and{' '}
-            <Text className="text-violet">Privacy Policy</Text>
+            {t('onboarding.legal')}
+            {`\n`}
+            <Text className="text-brand">{t('onboarding.terms')}</Text> {t('common.and')}{' '}
+            <Text className="text-violet">{t('onboarding.privacyPolicy')}</Text>
           </Text>
           <Pressable className="mt-3 self-center" onPress={() => setShowLanguage(true)}>
-            <Text className="text-xs text-white/50">Language: {language.toUpperCase()}</Text>
+            <Text className="text-xs text-white/50">
+              {t('onboarding.languageBadge', { code: language.toUpperCase() })}
+            </Text>
           </Pressable>
         </View>
       </View>

@@ -3,7 +3,9 @@ import { RecordingPresets, useAudioRecorder, useAudioRecorderState } from 'expo-
 
 import {
   cancelAudioRecording,
+  deactivateRecordingAudioMode,
   deleteTemporaryRecording,
+  isReleasedAudioRecorderError,
   startAudioRecording,
   stopAudioRecording,
 } from '@/core/audio/audioRecorder';
@@ -41,13 +43,13 @@ export function useVoiceRecorder() {
     return () => {
       mounted.current = false;
       session.current += 1;
-      void cancelAudioRecording(recorder);
+      void deactivateRecordingAudioMode().catch(() => undefined);
       dispatch(voiceReset());
     };
   }, [dispatch, recorder]);
 
   const start = useCallback(async () => {
-    if (operationInProgress.current || recorder.isRecording) return false;
+    if (operationInProgress.current || recorderState.isRecording) return false;
     operationInProgress.current = true;
     const currentSession = ++session.current;
     try {
@@ -74,10 +76,10 @@ export function useVoiceRecorder() {
     } finally {
       operationInProgress.current = false;
     }
-  }, [dispatch, recorder, voice.recordingUri]);
+  }, [dispatch, recorder, recorderState.isRecording, voice.recordingUri]);
 
   const stop = useCallback(async (): Promise<CompletedRecording | null> => {
-    if (operationInProgress.current || !recorder.uri) return null;
+    if (operationInProgress.current) return null;
     operationInProgress.current = true;
     const currentSession = session.current;
     try {
@@ -88,7 +90,11 @@ export function useVoiceRecorder() {
       dispatch(voiceStatusChanged('processing_audio'));
       return recording;
     } catch (error: unknown) {
-      if (mounted.current && currentSession === session.current)
+      if (
+        mounted.current &&
+        currentSession === session.current &&
+        !isReleasedAudioRecorderError(error)
+      )
         dispatch(
           voiceFailed(
             error instanceof Error ? error.message : 'The recording could not be completed.',
@@ -102,8 +108,21 @@ export function useVoiceRecorder() {
 
   const cancel = useCallback(async () => {
     session.current += 1;
-    await cancelAudioRecording(recorder);
-    if (mounted.current) dispatch(voiceReset());
+    if (operationInProgress.current) return;
+    operationInProgress.current = true;
+    try {
+      await cancelAudioRecording(recorder);
+    } catch (error: unknown) {
+      if (mounted.current && !isReleasedAudioRecorderError(error))
+        dispatch(
+          voiceFailed(
+            error instanceof Error ? error.message : 'The recording could not be cancelled.',
+          ),
+        );
+    } finally {
+      operationInProgress.current = false;
+      if (mounted.current) dispatch(voiceReset());
+    }
   }, [dispatch, recorder]);
 
   return {

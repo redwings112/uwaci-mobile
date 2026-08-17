@@ -1,10 +1,16 @@
 {
   "common": {
+    "you": "Toi",
     "appName": "Uwaci",
     "retry": "Réessayer",
     "cancel": "Annuler",
     "send": "Envoyer",
-    "experimental": "Expérimental"
+    "experimental": "Expérimental",
+    "continue": "Continuer",
+    "or": "OU",
+    "and": "et",
+    "close": "Fermer",
+    "tagline": "Le savoir pour l’humanité"
   },
   "home": {
     "eyebrow": "VOTRE VOIX, COMPRISE",
@@ -21,7 +27,27 @@
     "transcription": "Uwaci a entendu",
     "speak": "Écouter cette réponse",
     "feedback": "Cette réponse vous a-t-elle aidé ?",
-    "thinking": "Uwaci réfléchit…"
+    "thinking": "Uwaci réfléchit…",
+    "newChat": "Nouveau chat",
+    "suggestions": "Suggestions",
+    "whyThese": "Pourquoi celles-ci ?",
+    "offlineTitle": "Tu es hors ligne",
+    "offlineMessage": "Reconnecte-toi avant d’envoyer une question vocale ou écrite.",
+    "sessionTitle": "Session sécurisée indisponible",
+    "speechTitle": "Réponse vocale indisponible",
+    "speechUnavailable": "Cette réponse n’a pas pu être lue à voix haute. Tu peux la lire ci-dessous.",
+    "connectionError": "Vérifie ta connexion et réessaie.",
+    "questionA11y": "Ta question",
+    "sendQuestion": "Envoyer la question",
+    "askByVoice": "Demander par la voix",
+    "voiceFailed": "La voix a échoué.",
+    "editTranscript": "Modifier la transcription",
+    "stopHint": "Touche le bouton stop pour envoyer ta question à Uwaci.",
+    "emptyTitle": "Pose ta question",
+    "emptyMessage": "Parle ou écris naturellement. Uwaci garde la voix et le texte dans une seule conversation.",
+    "noAnswerTitle": "Pas encore de réponse",
+    "noAnswerFull": "Pose une question à Uwaci pour voir la réponse complète.",
+    "noAnswerShort": "Pose une question à Uwaci pour voir la réponse."
   },
   "settings": {
     "title": "Paramètres",
@@ -29,9 +55,306 @@
     "language": "Langue de conversation préférée",
     "voiceResponse": "Lire les réponses à voix haute",
     "aboutTitle": "À propos d’Uwaci",
-    "about": "Uwaci utilise son service sécurisé pour le traitement IA."
+    "about": "Uwaci utilise son service sécurisé pour le traitement IA.",
+    "appearanceLabel": "Apparence"
   },
   "errors": {
-    "offline": "Vous semblez hors ligne. Vérifiez votre connexion puis réessayez."
+    "offline": "Vous semblez hors ligne. Vérifiez votre connexion puis réessayez.",
+    "INVALID_AUDIO": "Cet enregistrement n’a pas pu être utilisé. Réenregistre, s’il te plaît.",
+    "AUDIO_TOO_LARGE": "Cet enregistrement est trop volumineux. Pose une question plus courte.",
+    "AUDIO_TOO_LONG": "Cet enregistrement est trop long. Pose une question plus courte.",
+    "AUDIO_UPLOAD_FAILED": "L’enregistrement n’a pas pu être envoyé à Uwaci. Ta connexion est peut-être bonne ; réessaie.",
+    "UNSUPPORTED_LANGUAGE": "Cette langue n’est pas encore prise en charge.",
+    "TRANSCRIPTION_FAILED": "Nous n’avons pas compris l’enregistrement. Réessaie.",
+    "TRANSCRIPTION_LOW_CONFIDENCE": "Essaie de répéter, s’il te plaît.",
+    "PROVIDER_TIMEOUT": "Uwaci met plus de temps que prévu. Réessaie.",
+    "RATE_LIMITED": "Trop de requêtes ont été envoyées. Patiente un instant et réessaie.",
+    "AUTHENTICATION_REQUIRED": "Reconnecte-toi pour continuer.",
+    "NETWORK_ERROR": "Vérifie ta connexion et réessaie.",
+    "RECORDING_MISSING": "Aucun enregistrement n’a été créé. Réessaie.",
+    "RECORDING_TOO_SHORT": "Cet enregistrement était trop court. Maintiens le micro, parle, puis touche à nouveau."
+  },
+  "answer": {
+    "title": "Réponse",
+    "expand": "Agrandir",
+    "feedbackQuestion": "Cette réponse t'a-t-elle aidé ?",
+    "yes": "Oui",
+    "yesDetail": "Très utile",
+    "somewhat": "Quelque peu",
+    "somewhatDetail": "Partiellement utile",
+    "no": "Non",
+    "noDetail": "Pas utile",
+    "moreQuestions": "Tu peux poser d'autres questions",
+    "placeholder": "Pose n'importe quelle question…",
+    "tipTitle": "Conseil Uwaci",
+    "tipBody": "Uwaci utilise des sources fiables et le savoir local pour te donner les meilleures réponses."
+  },
+  "onboarding": {
+    "chooseLanguage": "Choisis ta langue",
+    "languageHint": "Ta langue de conversation peut changer à tout moment.",
+    "tagline": "LE SAVOIR POUR L’HUMANITÉ",
+    "welcome": "Bienvenue sur",
+    "intro": "Numérise, actualise et utilise\ntes réalités selon tes propres termes.",
+    "speakTitle": "Parle à Uwaci",
+    "speakSubtitle": "Appuie et commence à parler",
+    "typeTitle": "Écris à Uwaci",
+    "typeSubtitle": "Discute par texte",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "legal": "En continuant, tu acceptes nos",
+    "terms": "Conditions d’utilisation",
+    "privacyPolicy": "Politique de confidentialité",
+    "languageBadge": "Langue : {{code}}"
+  },
+  "voice": {
+    "newConversation": "Démarrer une nouvelle conversation vocale",
+    "chooseLanguage": "Choisir la langue de la conversation vocale",
+    "openChat": "Ouvrir le chat",
+    "preparingAnswer": "Préparation de ta réponse",
+    "listeningSeconds": "Écoute · {{seconds}} s",
+    "readyInSeconds": "Prêt en {{seconds}} s",
+    "cancelRecording": "Annuler l’enregistrement",
+    "stopAndAnswer": "Arrêter l’enregistrement et obtenir ma réponse",
+    "stopAndSend": "Arrêter l’enregistrement et envoyer",
+    "startTalking": "Commencer à parler à Uwaci",
+    "stopSpeaking": "Arrêter la voix d’Uwaci",
+    "liveTranscriptionA11y": "Transcription en direct. {{text}}",
+    "didYouKnow": "Le savais-tu ?",
+    "cancelQuestion": "Annuler cette question",
+    "privateAndSecure": "Ta conversation est privée et sécurisée",
+    "typeInstead": "Écrire plutôt",
+    "askUwaci": "Demander à Uwaci",
+    "askUwaciHint": "Arrête et obtiens ma réponse",
+    "liveTranscription": "Transcription en direct",
+    "transcriptPlaceholder": "Tes mots apparaîtront ici dès que tu arrêtes de parler.",
+    "thinking": "Uwaci réfléchit",
+    "speaking": "Uwaci parle",
+    "readyNext": "Prêt pour ta prochaine question",
+    "talkNaturally": "Parle naturellement avec Uwaci",
+    "listeningTitle": "Je t’écoute…",
+    "listeningCaption": "Parle naturellement. Une courte pause envoie ta question.",
+    "thinkingCaption": "Je t’ai entendu. Ta réponse arrive.",
+    "speakingCaption": "Touche l’orbe pour m’interrompre, puis dis-moi ce dont tu as besoin.",
+    "idleCaption": "Touche l’orbe, parle, puis touche à nouveau pour envoyer.",
+    "hideTranscript": "Masquer la transcription",
+    "showTranscript": "Transcription",
+    "thinkingTitle": "Uwaci réfléchit…",
+    "thinkingSubtitle": "Cela peut prendre quelques secondes.",
+    "speechFailed": "La réponse vocale n’a pas pu démarrer. Touche la transcription pour la lire.",
+    "paused": "Réponse vocale en pause",
+    "recording": "Enregistrement",
+    "transcriptTitle": "Transcription vocale",
+    "transcriptHint": "Elle reste masquée tant que tu ne l’ouvres pas.",
+    "transcriptEmpty": "Ta conversation apparaîtra ici.",
+    "playbackHint": "La lecture reste disponible sur tous les écrans.",
+    "didYouKnowBody": "Uwaci s’appuie sur des sources fiables et le savoir local pour te donner les meilleures réponses.",
+    "stagePreparing": "Préparation de ton enregistrement",
+    "stageAnswering": "Transcription et rédaction de ta réponse",
+    "stageTranscribing": "Compréhension de ton enregistrement",
+    "stageReasoning": "Rédaction de ta réponse",
+    "progressSpoke": "Tu as parlé",
+    "progressProcessing": "Uwaci répond",
+    "progressAnswer": "Uwaci parle"
+  },
+  "privacy": {
+    "title": "Tes données sont privées",
+    "subtitle": "Uwaci protège tes conversations.",
+    "detailsSubtitle": "Voici exactement ce qui arrive à ce que tu dis et écris.",
+    "points": {
+      "recordings": {
+        "title": "Les enregistrements sont stockés en sécurité",
+        "body": "Ton enregistrement vocal est chiffré pendant le transfert et sauvegardé en arrière-plan dans un stockage protégé, sans retarder ta réponse."
+      },
+      "conversations": {
+        "title": "Tes conversations restent les tiennes",
+        "body": "Tes questions et réponses sont liées à ton compte pour que tu puisses les retrouver. Elles ne sont ni vendues ni partagées."
+      },
+      "encrypted": {
+        "title": "Chiffré pendant le transfert",
+        "body": "Tout ce qui circule entre cette application et Uwaci utilise une connexion chiffrée."
+      },
+      "history": {
+        "title": "Tu peux effacer ton historique",
+        "body": "Supprimer une conversation la retire de ton historique. Les réponses enregistrées restent jusqu’à leur suppression."
+      }
+    }
+  },
+  "answerActions": {
+    "title": "Actions sur la réponse",
+    "share": "Partager la réponse",
+    "save": "Enregistrer la réponse",
+    "unsave": "Retirer des enregistrements"
+  },
+  "appearance": {
+    "light": "Clair",
+    "lightHelper": "Par défaut",
+    "dark": "Sombre",
+    "darkHelper": "Doux pour les yeux",
+    "system": "Système",
+    "systemHelper": "Suivre l’appareil",
+    "title": "Apparence",
+    "subtitle": "Choisis l’allure et l’ambiance d’Uwaci.",
+    "theme": "Thème",
+    "accentColor": "Couleur d’accent",
+    "displayOptions": "Options d’affichage",
+    "preview": "Aperçu",
+    "textSize": "Taille du texte",
+    "textSizeHelper": "Ajuste la taille du texte pour mieux lire",
+    "bubbleStyle": "Style des bulles",
+    "bubbleStyleHelper": "Choisis l’affichage des messages",
+    "reduceMotion": "Réduire les animations",
+    "reduceMotionHelper": "Limite les animations et les effets",
+    "increaseContrast": "Augmenter le contraste",
+    "increaseContrastHelper": "Améliore le contraste du texte et de l’interface"
+  },
+  "auth": {
+    "confirmEmail": "Consulte ton e-mail pour confirmer ton compte, puis connecte-toi.",
+    "createTitle": "Crée ton compte",
+    "welcomeTitle": "Bon retour",
+    "createSubtitle": "Garde ton expérience Uwaci sur tous tes appareils.",
+    "welcomeSubtitle": "Connecte-toi pour continuer avec ton compte.",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "createAction": "Créer un compte",
+    "signInAction": "Se connecter",
+    "haveAccount": "Tu as déjà un compte ? Connecte-toi",
+    "newHere": "Nouveau sur Uwaci ? Crée un compte"
+  },
+  "library": {
+    "history": "Historique",
+    "saved": "Enregistrés",
+    "discover": "Découvrir",
+    "historySubtitle": "Reprends les conversations de ton compte d’une session à l’autre.",
+    "savedSubtitle": "Les réponses que tu as mises de côté.",
+    "discoverSubtitle": "Essaie une suggestion, puis poursuis la conversation.",
+    "untitled": "Conversation Uwaci",
+    "loadError": "Les réponses enregistrées n’ont pas pu être chargées depuis cet appareil.",
+    "removeError": "Cette réponse n’a pas pu être retirée de cet appareil.",
+    "signIn": "Se connecter",
+    "savedAnswer": "Réponse enregistrée"
+  },
+  "profile": {
+    "groups": {
+      "account": "Compte",
+      "preferences": "Préférences",
+      "more": "Plus"
+    },
+    "defaultName": "Utilisateur Uwaci",
+    "guestEmail": "Session invité privée",
+    "privateAccount": "Compte privé",
+    "freePlan": "Offre gratuite",
+    "plusTitle": "Débloque plus avec Uwaci Plus",
+    "plusBody": "Plus d’utilisation quotidienne, des réponses plus rapides, l’envoi de fichiers et des fonctions avancées.",
+    "upgrade": "Passer à Plus",
+    "logOut": "Se déconnecter",
+    "autoDetect": "Détection auto · {{language}}",
+    "themeMode": "Mode {{mode}}",
+    "rows": {
+      "profile": {
+        "title": "Profil",
+        "subtitle": "Consulte et modifie tes informations"
+      },
+      "privacy": {
+        "title": "Confidentialité et sécurité",
+        "subtitle": "Gère tes données et ta confidentialité"
+      },
+      "subscription": {
+        "title": "Abonnement",
+        "subtitle": "Gère ton offre et ta facturation"
+      },
+      "usage": {
+        "title": "Utilisation",
+        "subtitle": "Vois ton activité et tes limites quotidiennes"
+      },
+      "language": {
+        "title": "Langue",
+        "subtitle": "Langue de conversation"
+      },
+      "appearance": {
+        "title": "Apparence",
+        "subtitle": "Choisis l’allure d’Uwaci"
+      },
+      "voice": {
+        "title": "Voix et parole",
+        "subtitle": "Choisis la voix et la vitesse"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "subtitle": "Gère tes alertes et mises à jour"
+      },
+      "help": {
+        "title": "Aide et support",
+        "subtitle": "FAQ, guides et contact"
+      },
+      "about": {
+        "title": "À propos d’Uwaci",
+        "subtitle": "Version 1.0.0"
+      }
+    }
+  },
+  "feedback": {
+    "title": "Aide à améliorer Uwaci",
+    "prompt": "Qu’est-ce qui décrit le mieux cette réponse ?",
+    "helpful": "Utile",
+    "not_helpful": "Pas utile",
+    "transcription_problem": "Problème de transcription",
+    "wrong_language": "Mauvaise langue",
+    "incorrect_answer": "Réponse incorrecte",
+    "audio_problem": "Problème audio"
+  },
+  "language": {
+    "autoDetectShort": "Détection auto",
+    "experimental": "expérimental",
+    "title": "Langue",
+    "subtitle": "Choisis comment Uwaci te parle et comment tu lui parles.",
+    "interface": "Langue de l’application",
+    "interfaceHelper": "Les boutons, libellés et messages de l’application.",
+    "conversation": "Langue de conversation",
+    "conversationHelper": "La langue dans laquelle Uwaci répond à tes questions."
+  },
+  "tabs": {
+    "home": "Accueil",
+    "menu": "Menu",
+    "chat": "Chat",
+    "history": "Historique",
+    "saved": "Enregistrés",
+    "discover": "Découvrir",
+    "profile": "Profil"
+  },
+  "pipes": {
+    "pipe0": {
+      "label": "Accueil principal",
+      "description": "L’accueil neutre d’Uwaci pour la voix, les conversations, la découverte et les éléments enregistrés."
+    },
+    "pipe1": {
+      "label": "Pipe 1",
+      "description": "Base de navigation contextuelle ; les onglets produit pourront être ajoutés ici une fois définis."
+    },
+    "pipe2": {
+      "label": "Pipe 2",
+      "description": "Base de navigation contextuelle ; les onglets produit pourront être ajoutés ici une fois définis."
+    },
+    "pipe3": {
+      "label": "Pipe 3",
+      "description": "Base de navigation contextuelle ; les onglets produit pourront être ajoutés ici une fois définis."
+    },
+    "pipe4": {
+      "label": "Pipe 4",
+      "description": "Base de navigation contextuelle ; les onglets produit pourront être ajoutés ici une fois définis."
+    },
+    "menu": {
+      "title": "Choisir un Pipe",
+      "subtitle": "Chaque Pipe conserve le même compte et la même structure Uwaci, avec sa propre navigation contextuelle.",
+      "account": "Compte et paramètres"
+    },
+    "contextReady": "Le contexte de navigation de ce Pipe est prêt. Ajoutez ses routes produit approuvées et ses onglets dans le registre typé des Pipes."
+  },
+  "discover": {
+    "businessTitle": "Lance une activité avec ce que tu as",
+    "businessPrompt": "Donne-moi des idées de business concrètes à lancer avec un petit budget dans ma ville.",
+    "planTitle": "Transforme le savoir local en plan",
+    "planPrompt": "Aide-moi à transformer un problème de ma communauté en plan d’action simple, étape par étape.",
+    "learnTitle": "Apprends quelque chose dans ma langue",
+    "learnPrompt": "Explique-moi simplement une compétence numérique utile et donne-moi un court exercice."
   }
 }

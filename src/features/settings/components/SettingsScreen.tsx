@@ -14,6 +14,7 @@ import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { Screen } from '@/shared/components/Screen/Screen';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { colors } from '@/theme/tokens';
 
 export function SettingsScreen() {
   const router = useRouter();
@@ -73,8 +74,8 @@ export function SettingsScreen() {
         </Typography>
         <Switch
           accessibilityLabel={t('settings.voiceResponse')}
-          trackColor={{ false: '#DDE3DD', true: '#75A68C' }}
-          thumbColor={voiceEnabled ? '#215C45' : '#FFFFFF'}
+          trackColor={{ false: colors.border, true: colors.brand }}
+          thumbColor={voiceEnabled ? colors.brand : '#FFFFFF'}
           value={voiceEnabled}
           onValueChange={(value) => {
             dispatch(voiceResponsesChanged(value));
@@ -87,7 +88,7 @@ export function SettingsScreen() {
         onPress={() => router.push('/(app)/appearance')}
       >
         <View className="flex-1">
-          <Typography variant="label">Appearance</Typography>
+          <Typography variant="label">{t('settings.appearanceLabel')}</Typography>
           <Typography variant="caption" className="mt-1">
             {themeMode[0]?.toUpperCase()}
             {themeMode.slice(1)} mode, accent and display options

@@ -1,12 +1,44 @@
-import { Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
+import { playTemporaryAudio } from '@/core/audio/audioPlayer';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+import { colors } from '@/theme/tokens';
 
 import type { ConversationMessage } from '../types';
 
-export function MessageBubble({ message }: { message: ConversationMessage }) {
+export function MessageBubble({
+  message,
+  audioUri,
+}: {
+  message: ConversationMessage;
+  audioUri?: string;
+}) {
   const user = message.role === 'user';
+  const [playing, setPlaying] = useState(false);
+  const stopPlayback = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      stopPlayback.current?.();
+      stopPlayback.current = null;
+    },
+    [],
+  );
+
+  const togglePlayback = () => {
+    if (stopPlayback.current) {
+      stopPlayback.current();
+      stopPlayback.current = null;
+      setPlaying(false);
+      return;
+    }
+    if (!audioUri) return;
+    stopPlayback.current = playTemporaryAudio(audioUri);
+    setPlaying(true);
+  };
+
   return (
     <View
       className={`mb-3 max-w-[88%] rounded-control px-4 py-3 ${user ? 'self-end bg-lavender' : 'self-start border border-border bg-surface'}`}
@@ -28,9 +60,20 @@ export function MessageBubble({ message }: { message: ConversationMessage }) {
         </Typography>
       ) : null}
       {user && message.inputMethod === 'voice' ? (
-        <View className="mt-2 h-6 w-6 items-center justify-center self-end rounded-full bg-surface">
-          <AppIcon color="#215C45" name="mic" size={15} />
-        </View>
+        audioUri ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={playing ? 'Stop your recording' : 'Play your recording'}
+            className="mt-2 h-10 w-10 items-center justify-center self-end rounded-full bg-brand"
+            onPress={togglePlayback}
+          >
+            <AppIcon color="#FFFFFF" name={playing ? 'square' : 'play'} size={20} />
+          </Pressable>
+        ) : (
+          <View className="mt-2 h-6 w-6 items-center justify-center self-end rounded-full bg-surface">
+            <AppIcon color={colors.brand} name="mic" size={15} />
+          </View>
+        )
       ) : null}
     </View>
   );

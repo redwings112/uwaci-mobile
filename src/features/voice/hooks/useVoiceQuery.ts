@@ -1,20 +1,23 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { deleteTemporaryRecording } from '@/core/audio/audioRecorder';
+import { VOICE_UPLOAD_TIMEOUT_MS } from '@/core/constants/audio';
 import { mapApiError } from '@/core/errors/mapApiError';
 import { logger } from '@/core/logging/logger';
 import { useAppDispatch } from '@/store/hooks';
 
-import { useSendVoiceQueryMutation } from '../api/voiceApi';
+import { mapApiQueryResult } from '@/features/conversation/api/contracts';
+
+import { executeVoiceStream, type VoiceStreamCallbacks } from '../api/voiceStream';
 import { voiceFailed, voiceStatusChanged } from '../state/voiceSlice';
 import type { VoiceQueryInput } from '../types';
 
 export function useVoiceQuery() {
   const dispatch = useAppDispatch();
-  const [sendVoiceQuery, result] = useSendVoiceQueryMutation();
+  const [isLoading, setIsLoading] = useState(false);
   const mounted = useRef(true);
-  const activeRequest = useRef<ReturnType<typeof sendVoiceQuery> | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
 
   useEffect(
     () => () => {
@@ -25,15 +28,24 @@ export function useVoiceQuery() {
     [],
   );
 
+  const abort = useCallback(() => {
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    if (mounted.current) setIsLoading(false);
+  }, []);
+
   const submit = useCallback(
-    async (input: VoiceQueryInput) => {
+    async (input: VoiceQueryInput, callbacks: VoiceStreamCallbacks = {}) => {
       dispatch(voiceStatusChanged('uploading'));
-      const request = sendVoiceQuery(input);
       activeRequest.current?.abort();
+      const request = new AbortController();
       activeRequest.current = request;
+      setIsLoading(true);
+      const timeout = setTimeout(() => request.abort(), VOICE_UPLOAD_TIMEOUT_MS);
       try {
-        const response = await request.unwrap();
-        deleteTemporaryRecording(input.uri);
+        const response = mapApiQueryResult(
+          await executeVoiceStream(input, request.signal, callbacks),
+        );
         if (mounted.current && activeRequest.current === request)
           dispatch(voiceStatusChanged('response_received'));
         return response;
@@ -56,11 +68,18 @@ export function useVoiceQuery() {
           dispatch(voiceFailed(mapped.message));
         throw mapped;
       } finally {
-        if (activeRequest.current === request) activeRequest.current = null;
+        clearTimeout(timeout);
+        // Voice recordings are transient. Clean them after success, failure, or
+        // cancellation so long-running sessions cannot fill the app cache.
+        deleteTemporaryRecording(input.uri);
+        if (activeRequest.current === request) {
+          activeRequest.current = null;
+          if (mounted.current) setIsLoading(false);
+        }
       }
     },
-    [dispatch, sendVoiceQuery],
+    [dispatch],
   );
 
-  return { submit, ...result };
+  return { submit, abort, isLoading };
 }

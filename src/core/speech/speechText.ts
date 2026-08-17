@@ -1,15 +1,3 @@
-interface HeadingCueSet {
-  title: string;
-  section: string;
-  subsection: string;
-}
-
-const headingCues: Record<string, HeadingCueSet> = {
-  en: { title: 'Title', section: 'Section', subsection: 'Subsection' },
-  fr: { title: 'Titre', section: 'Section', subsection: 'Sous-section' },
-  sw: { title: 'Kichwa', section: 'Sehemu', subsection: 'Sehemu ndogo' },
-};
-
 function decodeCommonEntities(value: string): string {
   return value
     .replaceAll('&nbsp;', ' ')
@@ -51,11 +39,8 @@ function withSentencePause(value: string): string {
  * The visual message keeps its Markdown; only the TTS input is transformed.
  */
 export function prepareTextForSpeech(markdown: string, language?: string): string {
-  const locale = language?.toLowerCase().split('-', 1)[0] ?? 'en';
-  const cues = headingCues[locale];
+  void language;
   const spokenBlocks: string[] = [];
-  let firstHeadingLevel: number | null = null;
-  let headingCount = 0;
   let inCodeFence = false;
 
   for (const rawLine of markdown.replace(/\r\n?/g, '\n').split('\n')) {
@@ -69,18 +54,9 @@ export function prepareTextForSpeech(markdown: string, language?: string): strin
 
     const heading = /^(#{1,6})\s*(.*?)\s*#*$/.exec(line);
     if (heading) {
-      const level = heading[1]!.length;
       const text = withSentencePause(stripInlineMarkdown(heading[2] ?? ''));
       if (!text) continue;
-      if (firstHeadingLevel === null) firstHeadingLevel = level;
-      let cue = '';
-      if (cues) {
-        if (headingCount === 0 && spokenBlocks.length === 0) cue = cues.title;
-        else if (headingCount === 0) cue = cues.section;
-        else cue = level > firstHeadingLevel ? cues.subsection : cues.section;
-      }
-      spokenBlocks.push(cue ? `${cue}. ${text}` : text);
-      headingCount += 1;
+      spokenBlocks.push(text);
       continue;
     }
 

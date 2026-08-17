@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+import { colors } from '@/theme/tokens';
 
 interface PasswordInputProps {
   value: string;
@@ -33,7 +34,7 @@ export function PasswordInput({ value, onChangeText, mode }: PasswordInputProps)
         hitSlop={8}
         onPress={() => setVisible((current) => !current)}
       >
-        <AppIcon color="#215C45" name={visible ? 'eyeOff' : 'eye'} size={24} />
+        <AppIcon color={colors.brand} name={visible ? 'eyeOff' : 'eye'} size={24} />
       </Pressable>
     </View>
   );

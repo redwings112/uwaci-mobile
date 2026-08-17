@@ -1,27 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+import { colors } from '@/theme/tokens';
 
 interface ConversationComposerProps {
   onSend: (text: string) => Promise<void>;
   onMicrophone?: () => void;
+  onVoiceMode?: () => void;
+  onPrivacy?: () => void;
   inputDisabled?: boolean;
+  sending?: boolean;
   microphoneDisabled?: boolean;
   microphoneActive?: boolean;
   initialValue?: string;
   autoFocus?: boolean;
+  placeholder?: string;
 }
 
 export function ConversationComposer({
   onSend,
   onMicrophone,
+  onVoiceMode,
+  onPrivacy,
   inputDisabled = false,
+  sending = false,
   microphoneDisabled = false,
   microphoneActive = false,
   initialValue = '',
   autoFocus = false,
+  placeholder,
 }: ConversationComposerProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState(initialValue);
   const input = useRef<TextInput>(null);
   useEffect(() => {
@@ -29,9 +40,9 @@ export function ConversationComposer({
   }, [autoFocus]);
   const submit = async () => {
     const text = value.trim();
-    if (!text) return;
-    await onSend(text);
+    if (!text || sending) return;
     setValue('');
+    await onSend(text);
   };
   return (
     <View
@@ -39,27 +50,22 @@ export function ConversationComposer({
       style={{ elevation: 3 }}
     >
       <Pressable
-        accessibilityLabel={microphoneActive ? 'Stop recording and send' : 'Ask by voice'}
-        accessibilityState={{ disabled: microphoneDisabled, selected: microphoneActive }}
-        className={`h-10 w-10 items-center justify-center rounded-full ${microphoneActive ? 'bg-danger' : ''}`}
-        disabled={microphoneDisabled}
-        onPress={onMicrophone}
+        accessibilityRole="button"
+        accessibilityLabel={t('privacy.title')}
+        className="h-10 w-10 items-center justify-center rounded-full bg-lavender"
+        onPress={onPrivacy}
       >
-        <AppIcon
-          color={microphoneActive ? '#FFFFFF' : '#215C45'}
-          name={microphoneActive ? 'square' : 'mic'}
-          size={27}
-        />
+        <AppIcon color={colors.brand} name="shield" size={21} />
       </Pressable>
       <TextInput
         ref={input}
-        accessibilityLabel="Your question"
+        accessibilityLabel={t('conversation.questionA11y')}
         className="max-h-24 min-h-10 flex-1 px-2 text-sm text-ink"
         editable={!inputDisabled}
         multiline
         onChangeText={setValue}
         onSubmitEditing={() => void submit()}
-        placeholder="Ask anything, speak or type…"
+        placeholder={placeholder ?? t('conversation.placeholder')}
         placeholderTextColor="#777789"
         returnKeyType="send"
         value={value}
@@ -67,14 +73,48 @@ export function ConversationComposer({
       <View className="px-1">
         <AppIcon color="#777789" name="paperclip" size={23} />
       </View>
-      <Pressable
-        accessibilityLabel="Send question"
-        className={`h-10 w-10 items-center justify-center rounded-full ${value.trim() ? 'bg-brand' : 'bg-lavender'}`}
-        disabled={inputDisabled || !value.trim()}
-        onPress={() => void submit()}
-      >
-        <AppIcon color={value.trim() ? '#FFFFFF' : '#6F45EF'} name="send" size={22} />
-      </Pressable>
+      {sending ? (
+        <View
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('voice.thinking')}
+          className="h-10 w-10 items-center justify-center rounded-full bg-brand"
+        >
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        </View>
+      ) : microphoneActive ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('voice.stopAndSend')}
+          accessibilityState={{ disabled: microphoneDisabled }}
+          className="h-10 w-10 items-center justify-center rounded-full bg-danger"
+          disabled={microphoneDisabled}
+          onPress={onMicrophone}
+        >
+          <AppIcon color="#FFFFFF" name="square" size={22} />
+        </Pressable>
+      ) : value.trim() ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('conversation.sendQuestion')}
+          className="h-10 w-10 items-center justify-center rounded-full bg-brand"
+          disabled={inputDisabled}
+          onPress={() => void submit()}
+        >
+          <AppIcon color="#FFFFFF" name="send" size={22} />
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('conversation.askByVoice')}
+          accessibilityState={{ disabled: microphoneDisabled }}
+          className={`h-10 w-10 items-center justify-center rounded-full ${microphoneDisabled ? 'bg-lavender' : 'bg-brand'}`}
+          disabled={microphoneDisabled}
+          onPress={onMicrophone}
+        >
+          <AppIcon color={microphoneDisabled ? colors.brand : '#FFFFFF'} name="mic" size={22} />
+        </Pressable>
+      )}
     </View>
   );
 }

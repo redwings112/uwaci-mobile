@@ -1,4 +1,5 @@
 import { File } from 'expo-file-system';
+import { i18n } from '@/localization';
 import { setAudioModeAsync } from 'expo-audio';
 
 import { MAX_RECORDING_SECONDS, MIN_RECORDING_MILLIS } from '@/core/constants/audio';
@@ -21,15 +22,11 @@ export async function stopAudioRecording(
 ): Promise<CompletedRecording> {
   const status = recorder.getStatus();
   if (recorder.isRecording) await recorder.stop();
-  await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-  if (!recorder.uri)
-    throw new AppError('INVALID_AUDIO', 'No recording was created. Please try again.');
+  await deactivateRecordingAudioMode();
+  if (!recorder.uri) throw new AppError('INVALID_AUDIO', i18n.t('errors.RECORDING_MISSING'));
   if (status.durationMillis < MIN_RECORDING_MILLIS) {
     deleteTemporaryRecording(recorder.uri);
-    throw new AppError(
-      'INVALID_AUDIO',
-      'That recording was too short. Hold the microphone, speak, then tap it again.',
-    );
+    throw new AppError('INVALID_AUDIO', i18n.t('errors.RECORDING_TOO_SHORT'));
   }
   return { uri: recorder.uri, durationMillis: status.durationMillis };
 }
@@ -45,7 +42,22 @@ export function deleteTemporaryRecording(uri: string | null | undefined): void {
 }
 
 export async function cancelAudioRecording(recorder: ManagedAudioRecorder): Promise<void> {
-  if (recorder.isRecording) await recorder.stop();
-  deleteTemporaryRecording(recorder.uri);
+  let uri: string | null = null;
+  try {
+    uri = recorder.uri;
+    if (recorder.isRecording) await recorder.stop();
+  } catch (error: unknown) {
+    if (!isReleasedAudioRecorderError(error)) throw error;
+  }
+  deleteTemporaryRecording(uri);
+  await deactivateRecordingAudioMode();
+}
+
+export async function deactivateRecordingAudioMode(): Promise<void> {
   await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+}
+
+export function isReleasedAudioRecorderError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /shared object.*already released|cannot use shared object/i.test(message);
 }

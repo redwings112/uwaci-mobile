@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import {
   listSavedAnswers,
@@ -18,25 +20,14 @@ import { ErrorState } from '@/shared/components/ErrorState/ErrorState';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { Typography } from '@/shared/components/Typography/Typography';
 import { useAppSelector } from '@/store/hooks';
+import { colors } from '@/theme/tokens';
 
 type LibraryTab = 'history' | 'saved' | 'discover';
 
-const discoverPrompts: { icon: AppIconName; title: string; prompt: string }[] = [
-  {
-    icon: 'rocket',
-    title: 'Start a business with what you have',
-    prompt: 'Give me practical business ideas I can start with a small budget in my city.',
-  },
-  {
-    icon: 'lightbulb',
-    title: 'Turn local knowledge into a plan',
-    prompt: 'Help me turn a problem in my community into a simple step-by-step action plan.',
-  },
-  {
-    icon: 'graduationCap',
-    title: 'Learn something in my language',
-    prompt: 'Explain a useful digital skill simply and give me a short practice exercise.',
-  },
+const discoverPrompts: { icon: AppIconName; id: string }[] = [
+  { icon: 'rocket', id: 'business' },
+  { icon: 'lightbulb', id: 'plan' },
+  { icon: 'graduationCap', id: 'learn' },
 ];
 
 function timeLabel(value: string): string {
@@ -47,6 +38,8 @@ function timeLabel(value: string): string {
 
 export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
   const router = useRouter();
+  const { openMenu } = usePipeNavigation();
+  const { t } = useTranslation();
   const auth = useAppSelector((state) => state.auth);
   const userId = auth.userId;
   const [saved, setSaved] = useState<SavedAnswer[]>([]);
@@ -81,7 +74,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
           if (active) setSaved(items);
         })
         .catch(() => {
-          if (active) setSavedError('Saved answers could not be loaded from this device.');
+          if (active) setSavedError(t('library.loadError'));
         })
         .finally(() => {
           if (active) setSavedLoading(false);
@@ -89,7 +82,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
       return () => {
         active = false;
       };
-    }, [tab, userId]),
+    }, [t, tab, userId]),
   );
 
   const openConversation = (conversationId: string) => {
@@ -117,7 +110,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
       });
       setSaved((items) => items.filter((item) => item.id !== answer.id));
     } catch {
-      setSavedError('That answer could not be removed from this device.');
+      setSavedError(t('library.removeError'));
     }
   };
 
@@ -128,18 +121,18 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
     (tab === 'saved' && Boolean(userId) && savedLoading);
   const error = tab === 'history' ? historyError : tab === 'saved' ? savedError : null;
 
-  const title = tab === 'history' ? 'History' : tab === 'saved' ? 'Saved' : 'Discover';
+  const title = t(`library.${tab}`);
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader onMenu={() => router.push('/(app)/profile')} />
+      <AppHeader onMenu={() => openMenu('pipe0')} />
       <View className="px-4 pb-3 pt-1">
         <Typography variant="title">{title}</Typography>
         <Typography variant="caption" className="mt-1">
           {tab === 'history'
-            ? 'Continue your account conversations across app sessions.'
+            ? t('library.historySubtitle')
             : tab === 'saved'
-              ? 'Answers you bookmarked for quick access.'
-              : 'Try a guided prompt, then keep the conversation going.'}
+              ? t('library.savedSubtitle')
+              : t('library.discoverSubtitle')}
         </Typography>
       </View>
 
@@ -155,7 +148,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
         {!loading && !userId && tab !== 'discover' ? (
           <SurfaceCard className="items-center p-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
-              <AppIcon color="#215C45" name="profile" size={34} />
+              <AppIcon color={colors.brand} name="profile" size={34} />
             </View>
             <Typography variant="title" className="mt-5 text-center">
               Sign in to see your {tab}
@@ -167,7 +160,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
               className="mt-5 min-h-11 items-center justify-center rounded-full bg-brand px-6"
               onPress={() => router.push('/(auth)/sign-in')}
             >
-              <Text className="text-sm font-semibold text-white">Sign in</Text>
+              <Text className="text-sm font-semibold text-white">{t('library.signIn')}</Text>
             </Pressable>
           </SurfaceCard>
         ) : null}
@@ -177,7 +170,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
         {!loading && userId && !error && tab === 'history' && history.length === 0 ? (
           <SurfaceCard className="items-center p-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-lavender">
-              <AppIcon color="#215C45" name="history" size={34} />
+              <AppIcon color={colors.brand} name="history" size={34} />
             </View>
             <Typography variant="title" className="mt-5 text-center">
               No conversations yet
@@ -196,11 +189,11 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
               >
                 <SurfaceCard className="mb-3 flex-row items-center p-4">
                   <View className="h-11 w-11 items-center justify-center rounded-full bg-lavender">
-                    <AppIcon color="#215C45" name="history" size={24} />
+                    <AppIcon color={colors.brand} name="history" size={24} />
                   </View>
                   <View className="ml-3 flex-1">
                     <Text className="text-sm font-semibold text-ink" numberOfLines={1}>
-                      {item.title || 'Uwaci conversation'}
+                      {item.title || t('library.untitled')}
                     </Text>
                     <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={2}>
                       {item.preview}
@@ -238,7 +231,9 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                   <View className="flex-row items-center">
                     <View className="flex-row items-center gap-1.5">
                       <AppIcon color="#6F45EF" name="star" size={18} />
-                      <Text className="text-xs font-semibold text-violet">Saved answer</Text>
+                      <Text className="text-xs font-semibold text-violet">
+                        {t('library.savedAnswer')}
+                      </Text>
                     </View>
                     <Text className="ml-auto text-xs text-muted">
                       {timeLabel(answer.createdAt)}
@@ -264,7 +259,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
 
         {tab === 'discover'
           ? discoverPrompts.map((item, index) => (
-              <Pressable key={item.title} onPress={() => startPrompt(item.prompt)}>
+              <Pressable key={item.id} onPress={() => startPrompt(t(`discover.${item.id}Prompt`))}>
                 <SurfaceCard className="mb-3 flex-row items-center p-4">
                   <View
                     className={`h-12 w-12 items-center justify-center rounded-full ${index === 0 ? 'bg-lavender' : index === 1 ? 'bg-cyan/10' : 'bg-[#FFF5DA]'}`}
@@ -276,13 +271,15 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
                     />
                   </View>
                   <View className="ml-3 flex-1">
-                    <Text className="text-sm font-semibold text-ink">{item.title}</Text>
+                    <Text className="text-sm font-semibold text-ink">
+                      {t(`discover.${item.id}Title`)}
+                    </Text>
                     <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={2}>
-                      {item.prompt}
+                      {t(`discover.${item.id}Prompt`)}
                     </Text>
                   </View>
                   <View className="ml-2">
-                    <AppIcon color="#215C45" name="chevronRight" size={22} />
+                    <AppIcon color={colors.brand} name="chevronRight" size={22} />
                   </View>
                 </SurfaceCard>
               </Pressable>

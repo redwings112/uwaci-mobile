@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthClient } from '@/core/auth/authClient';
 import { secureStorage } from '@/core/storage/secureStorage';
@@ -28,6 +29,7 @@ interface AuthScreenProps {
 
 export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const client = getAuthClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,7 +53,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
         return;
       }
       if (signUp && !result.data.session) {
-        setMessage('Check your email to confirm your account, then sign in.');
+        setMessage(t('auth.confirmEmail'));
         return;
       }
       await secureStorage.set(STORAGE_KEYS.onboardingComplete, 'true');
@@ -85,11 +87,11 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
           contentContainerClassName="flex-grow px-5 pt-6"
           keyboardShouldPersistTaps="handled"
         >
-          <Typography variant="title">{signUp ? 'Create your account' : 'Welcome back'}</Typography>
+          <Typography variant="title">
+            {signUp ? t('auth.createTitle') : t('auth.welcomeTitle')}
+          </Typography>
           <Typography className="mt-2 text-muted">
-            {signUp
-              ? 'Save your Uwaci experience across devices.'
-              : 'Sign in to continue with your account.'}
+            {signUp ? t('auth.createSubtitle') : t('auth.welcomeSubtitle')}
           </Typography>
           {next ? (
             <View className="mt-4 rounded-control border border-brand/20 bg-lavender p-4">
@@ -104,7 +106,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
           ) : null}
           <SurfaceCard className="mt-6 gap-4 p-5">
             <View>
-              <Typography variant="label">Email</Typography>
+              <Typography variant="label">{t('auth.email')}</Typography>
               <TextInput
                 accessibilityLabel="Email address"
                 autoCapitalize="none"
@@ -118,7 +120,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
               />
             </View>
             <View>
-              <Typography variant="label">Password</Typography>
+              <Typography variant="label">{t('auth.password')}</Typography>
               <PasswordInput mode={mode} onChangeText={setPassword} value={password} />
             </View>
             {message ? (
@@ -131,7 +133,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
               loading={loading}
               onPress={() => void submit()}
             >
-              {signUp ? 'Create account' : 'Sign in'}
+              {signUp ? t('auth.createAction') : t('auth.signInAction')}
             </Button>
           </SurfaceCard>
           <Pressable
@@ -147,7 +149,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
             }
           >
             <Typography className="text-brand">
-              {signUp ? 'Already have an account? Sign in' : 'New to Uwaci? Create account'}
+              {signUp ? t('auth.haveAccount') : t('auth.newHere')}
             </Typography>
           </Pressable>
         </ScrollView>

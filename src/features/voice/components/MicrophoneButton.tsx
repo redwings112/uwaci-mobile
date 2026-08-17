@@ -14,7 +14,7 @@ interface MicrophoneButtonProps {
 export function MicrophoneButton({ status, onPress, disabled = false }: MicrophoneButtonProps) {
   const recording = status === 'recording';
   const speaking = status === 'speaking';
-  const busy = ['processing_audio', 'uploading', 'transcribing', 'thinking'].includes(status);
+  const busy = ['processing_audio', 'uploading'].includes(status);
   const label = recording
     ? 'Stop recording'
     : speaking
