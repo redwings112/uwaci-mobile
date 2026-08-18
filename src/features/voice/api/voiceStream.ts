@@ -41,6 +41,10 @@ function parseEvent(line: string): StreamEvent {
   return JSON.parse(line) as StreamEvent;
 }
 
+function createVoiceTurnIdempotencyKey(): string {
+  return `voice-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 async function createForm(input: VoiceQueryInput): Promise<FormData> {
   const form = new FormData();
   const upload = getVoiceUploadMetadata();
@@ -65,17 +69,19 @@ export async function executeVoiceStream(
 ): Promise<ApiQueryResult> {
   const token = await getAccessToken();
   const form = await createForm(input);
+  const idempotencyKey = createVoiceTurnIdempotencyKey();
   const response = await expoFetch(`${appConfig.apiBaseUrl}/api/v1/voice/query/stream`, {
     method: 'POST',
     headers: {
       Accept: 'application/x-ndjson',
+      'Idempotency-Key': idempotencyKey,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: form,
     signal,
   });
   if (response.status === 404 || response.status === 405) {
-    const fallback = await executeVoiceUpload(input, signal);
+    const fallback = await executeVoiceUpload(input, signal, idempotencyKey);
     if ('error' in fallback && typeof fallback.status === 'string') throw fallback;
     const fallbackBody = parseVoiceResponseBody(fallback.body);
     if (fallback.status < 200 || fallback.status >= 300) {

@@ -89,6 +89,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const voiceActionInProgress = useRef(false);
   const thinkingVisible = useRef(false);
   const turnCancelled = useRef(false);
+  const completingVoiceTurn = useRef(false);
   const handsFreeEnabled = useRef(true);
   const streamSession = useRef<SpeechStreamSession | null>(null);
   const requestedConversationId =
@@ -177,32 +178,33 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   }, [begin, startRecording]);
 
   const completeVoiceTurn = async () => {
-    const audio = await recorder.stop();
-    if (!audio || !mounted.current) return;
-    turnCancelled.current = false;
-    dispatch(requestStarted());
-    dispatch(voiceThinkingReset());
-    dispatch(voiceThinkingStarted('transcribing'));
-    thinkingVisible.current = true;
-    router.push('/(app)/thinking');
+    if (completingVoiceTurn.current) return;
+    completingVoiceTurn.current = true;
     const pendingSpeech: string[] = [];
     let firstDelta = true;
-    const speechReady = speechService
-      .createStream(
-        {
-          language: getLanguage(language).speechLocale,
-          onDone: resumeHandsFreeListening,
-          onStopped: () => dispatch(voiceStatusChanged('idle')),
-          onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
-        },
-        `voice-stream-${Date.now()}`,
-      )
-      .then((session) => {
-        streamSession.current = session;
-        pendingSpeech.splice(0).forEach((chunk) => session.enqueue(chunk));
-        return session;
-      });
     try {
+      const audio = await recorder.stop();
+      if (!audio || !mounted.current) return;
+      turnCancelled.current = false;
+      dispatch(requestStarted());
+      dispatch(voiceThinkingReset());
+      dispatch(voiceThinkingStarted('transcribing'));
+      thinkingVisible.current = false;
+      const speechReady = speechService
+        .createStream(
+          {
+            language: getLanguage(language).speechLocale,
+            onDone: resumeHandsFreeListening,
+            onStopped: () => dispatch(voiceStatusChanged('idle')),
+            onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
+          },
+          `voice-stream-${Date.now()}`,
+        )
+        .then((session) => {
+          streamSession.current = session;
+          pendingSpeech.splice(0).forEach((chunk) => session.enqueue(chunk));
+          return session;
+        });
       const result = await voiceQuery.submit(
         {
           uri: audio.uri,
@@ -255,6 +257,8 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       streamSession.current = null;
       leaveThinking();
       dispatch(requestFailed(mapApiError(error).message));
+    } finally {
+      completingVoiceTurn.current = false;
     }
   };
 
@@ -309,7 +313,8 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     handsFreeEnabled.current = false;
     await speechService.stop();
     await recorder.cancel();
-    router.push({
+    
+    router.replace({
       pathname: '/(app)/conversation/[conversationId]',
       params: { conversationId: serverConversationId ?? 'new', focusComposer: 'true' },
     });

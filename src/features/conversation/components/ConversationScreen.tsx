@@ -334,7 +334,8 @@ export function ConversationScreen({
 
   const openVoiceMode = () => {
     Keyboard.dismiss();
-    router.push({
+    
+    router.replace({
       pathname: '/(app)',
       ...(serverConversationId ? { params: { conversationId: serverConversationId } } : {}),
     });
@@ -371,7 +372,7 @@ export function ConversationScreen({
     >
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <AppHeader onMenu={() => openMenu('pipe0')} />
         <View className="flex-row items-center justify-between px-3 pb-2">

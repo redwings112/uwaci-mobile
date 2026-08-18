@@ -49,7 +49,12 @@ export function useVoiceRecorder() {
   }, [dispatch, recorder]);
 
   const start = useCallback(async () => {
-    if (operationInProgress.current || recorderState.isRecording) return false;
+    if (
+      operationInProgress.current ||
+      recorderState.isRecording ||
+      recorder.getStatus().isRecording
+    )
+      return false;
     operationInProgress.current = true;
     const currentSession = ++session.current;
     try {

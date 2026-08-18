@@ -85,10 +85,12 @@ async function uploadWithNativeFileSystem(
 export async function executeVoiceUpload(
   input: VoiceQueryInput,
   signal: AbortSignal,
+  idempotencyKey?: string,
 ): Promise<VoiceUploadResult | VoiceUploadTransportError> {
   const token = await getAccessToken();
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
 
   try {
     return Platform.OS === 'web'

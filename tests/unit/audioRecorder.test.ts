@@ -1,6 +1,6 @@
 import { setAudioModeAsync } from 'expo-audio';
 
-import { cancelAudioRecording } from '@/core/audio/audioRecorder';
+import { cancelAudioRecording, startAudioRecording } from '@/core/audio/audioRecorder';
 
 jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn(async () => undefined),
@@ -25,5 +25,51 @@ describe('cancelAudioRecording', () => {
       allowsRecording: false,
       playsInSilentMode: true,
     });
+  });
+});
+
+describe('startAudioRecording', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('uses the hook-prepared recorder without preparing it a second time', async () => {
+    const recorder = {
+      getStatus: jest.fn(() => ({ canRecord: true })),
+      prepareToRecordAsync: jest.fn(),
+      record: jest.fn(),
+    };
+
+    await startAudioRecording(recorder as never);
+
+    expect(recorder.prepareToRecordAsync).not.toHaveBeenCalled();
+    expect(recorder.record).toHaveBeenCalledWith({ forDuration: expect.any(Number) });
+  });
+
+  it('prepares a recorder again only after an interrupted or completed session', async () => {
+    const recorder = {
+      getStatus: jest
+        .fn()
+        .mockReturnValueOnce({ canRecord: false, isRecording: false })
+        .mockReturnValueOnce({ canRecord: true, isRecording: false }),
+      prepareToRecordAsync: jest.fn(async () => undefined),
+      record: jest.fn(),
+    };
+
+    await startAudioRecording(recorder as never);
+
+    expect(recorder.prepareToRecordAsync).toHaveBeenCalledTimes(1);
+    expect(recorder.record).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not start the Android recorder twice while it is already recording', async () => {
+    const recorder = {
+      getStatus: jest.fn(() => ({ canRecord: true, isRecording: true })),
+      prepareToRecordAsync: jest.fn(),
+      record: jest.fn(),
+    };
+
+    await startAudioRecording(recorder as never);
+
+    expect(recorder.prepareToRecordAsync).not.toHaveBeenCalled();
+    expect(recorder.record).not.toHaveBeenCalled();
   });
 });

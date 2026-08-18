@@ -13,7 +13,14 @@ export async function startAudioRecording(recorder: ManagedAudioRecorder): Promi
     playsInSilentMode: true,
     interruptionMode: 'doNotMix',
   });
-  await recorder.prepareToRecordAsync();
+  let status = recorder.getStatus();
+  if (status.isRecording) return;
+
+  if (!status.canRecord) await recorder.prepareToRecordAsync();
+  status = recorder.getStatus();
+  if (status.isRecording) return;
+  if (!status.canRecord)
+    throw new AppError('INVALID_AUDIO', 'The microphone is not ready. Please try again.');
   recorder.record({ forDuration: MAX_RECORDING_SECONDS });
 }
 
