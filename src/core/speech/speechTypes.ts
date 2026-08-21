@@ -1,3 +1,5 @@
+import type { AppError } from '@/core/errors/AppError';
+
 export interface SpeakOptions {
   language?: string;
   rate?: number;
@@ -6,4 +8,5 @@ export interface SpeakOptions {
   onError?: () => void;
   onStopped?: () => void;
   onUnavailable?: () => void;
+  onNaturalError?: (error: AppError) => void;
 }

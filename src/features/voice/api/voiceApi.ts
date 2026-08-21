@@ -44,6 +44,7 @@ export const voiceApi = baseApi.injectEndpoints({
       },
       invalidatesTags: (_result, _error, request) => [
         { type: 'Conversation', id: 'LIST' },
+        'Usage',
         ...(request.conversationId
           ? [{ type: 'Conversation' as const, id: request.conversationId }]
           : []),

@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 
 const SPEECH_LEVEL = 0.3;
 const SILENCE_LEVEL = 0.22;
-const MIN_SPEECH_MILLIS = 500;
-const SILENCE_TO_SUBMIT_MILLIS = 1_100;
+const MIN_SPEECH_MILLIS = 350;
+
+const SILENCE_TO_SUBMIT_MILLIS = 650;
 
 interface SilenceAutoSubmitOptions {
   recording: boolean;

@@ -29,7 +29,6 @@ describe('ProfileScreen', () => {
     for (const title of [
       'Profile',
       'Privacy & Security',
-      'Subscription',
       'Usage',
       'Language',
       'Appearance',
@@ -48,6 +47,9 @@ describe('ProfileScreen', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Privacy & Security' }));
     expect(mockPush).toHaveBeenCalledWith('/(app)/privacy');
 
+    fireEvent.press(screen.getByRole('button', { name: 'Usage' }));
+    expect(mockPush).toHaveBeenCalledWith('/(app)/usage');
+
     fireEvent.press(screen.getByRole('button', { name: 'Appearance' }));
     expect(mockPush).toHaveBeenCalledWith('/(app)/appearance');
 
@@ -58,7 +60,6 @@ describe('ProfileScreen', () => {
   it('leaves rows without a destination inert', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByRole('button', { name: 'Subscription' }));
     fireEvent.press(screen.getByRole('button', { name: 'Notifications' }));
 
     expect(mockPush).not.toHaveBeenCalled();

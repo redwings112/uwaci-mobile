@@ -69,6 +69,8 @@
     "TRANSCRIPTION_LOW_CONFIDENCE": "Please try saying that again.",
     "PROVIDER_TIMEOUT": "Uwaci is taking longer than expected. Please retry.",
     "RATE_LIMITED": "The AI voice service is temporarily busy. Please try again shortly.",
+    "USAGE_LIMIT_EXCEEDED": "You have used this month's free credits. Your credits reset at the start of your next usage period.",
+    "USAGE_METERING_UNAVAILABLE": "Uwaci cannot safely measure this request right now. Please try again shortly.",
     "VOICE_TURN_IN_PROGRESS": "Uwaci is still answering your last voice message. You can interrupt it, then speak again.",
     "AUTHENTICATION_REQUIRED": "Please sign in again to continue.",
     "NETWORK_ERROR": "Check your connection and try again.",
@@ -244,9 +246,6 @@
     "guestEmail": "Private guest session",
     "privateAccount": "Private account",
     "freePlan": "Free plan",
-    "plusTitle": "Unlock more with Uwaci Plus",
-    "plusBody": "More daily usage, faster answers, file uploads, and advanced features.",
-    "upgrade": "Upgrade",
     "logOut": "Log out",
     "autoDetect": "Auto-detect · {{language}}",
     "themeMode": "{{mode}} mode",
@@ -259,13 +258,9 @@
         "title": "Privacy & Security",
         "subtitle": "Manage your data and privacy"
       },
-      "subscription": {
-        "title": "Subscription",
-        "subtitle": "Manage your plan and billing"
-      },
       "usage": {
         "title": "Usage",
-        "subtitle": "See your activity and daily limits"
+        "subtitle": "See your monthly free credits"
       },
       "language": {
         "title": "Language",
@@ -292,6 +287,34 @@
         "subtitle": "Version 1.0.0"
       }
     }
+  },
+  "usage": {
+    "title": "Usage",
+    "subtitle": "Your Free plan credits and current monthly period.",
+    "goBack": "Go back",
+    "loading": "Loading usage",
+    "loadErrorTitle": "Usage is unavailable",
+    "currentPlan": "Current plan",
+    "active": "Active",
+    "futurePlans": "Additional plans are not available yet.",
+    "creditsTitle": "Monthly credits",
+    "creditsRemaining": "credits remaining",
+    "usedOfTotal": "{{used}} of {{total}} used",
+    "progressA11y": "Monthly credit usage",
+    "percentageUsed": "{{percentage}}% used",
+    "nearLimitTitle": "Credits are running low",
+    "nearLimitMessage": "You are close to this month's free credit limit.",
+    "exhaustedTitle": "Monthly credits used",
+    "exhaustedMessage": "Text, voice, and natural speech requests will be available again in your next usage period.",
+    "configurationTitle": "Usage is temporarily unavailable",
+    "configurationMessage": "Uwaci cannot safely calculate credits right now. Please try again later.",
+    "periodTitle": "Current usage period",
+    "periodStart": "Started",
+    "resetDate": "Resets",
+    "refresh": "Refresh usage",
+    "refreshing": "Refreshing…",
+    "planA11y": "Current plan: {{plan}}",
+    "remainingA11y": "{{remaining}} credits remaining"
   },
   "feedback": {
     "title": "Help improve Uwaci",

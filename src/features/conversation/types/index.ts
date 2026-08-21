@@ -28,6 +28,7 @@ export interface Conversation {
 }
 
 export interface QueryResult {
+  correlationId?: string;
   conversationId: string;
   userMessage: ConversationMessage;
   assistantMessage: ConversationMessage;

@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { deleteTemporaryRecording } from '@/core/audio/audioRecorder';
 import { VOICE_UPLOAD_TIMEOUT_MS } from '@/core/constants/audio';
 import { mapApiError } from '@/core/errors/mapApiError';
+import { baseApi } from '@/core/api/baseApi';
 import { logger } from '@/core/logging/logger';
 import { useAppDispatch } from '@/store/hooks';
 
@@ -48,9 +49,12 @@ export function useVoiceQuery() {
         );
         if (mounted.current && activeRequest.current === request)
           dispatch(voiceStatusChanged('response_received'));
+        dispatch(baseApi.util.invalidateTags(['Usage']));
         return response;
       } catch (error: unknown) {
         const mapped = mapApiError(error);
+        if (mapped.code === 'USAGE_LIMIT_EXCEEDED' || mapped.code === 'USAGE_METERING_UNAVAILABLE')
+          dispatch(baseApi.util.invalidateTags(['Usage']));
         logger.warn('Voice query failed', {
           code: mapped.code,
           platform: Platform.OS,

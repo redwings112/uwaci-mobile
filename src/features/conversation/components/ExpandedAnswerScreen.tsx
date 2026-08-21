@@ -10,6 +10,7 @@ import { speechService } from '@/core/speech/speechService';
 import { useSpeechPlayback } from '@/core/speech/useSpeechPlayback';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { EmptyState } from '@/shared/components/EmptyState/EmptyState';
+import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
 import { useAppSelector } from '@/store/hooks';
 import { colors } from '@/theme/tokens';
 
@@ -32,6 +33,7 @@ export function ExpandedAnswerScreen() {
   const playback = useSpeechPlayback();
   const [copied, setCopied] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [speechNotice, setSpeechNotice] = useState<string | null>(null);
 
   const answer = [...messages].reverse().find((message) => message.role === 'assistant');
   const activePlayback = answer ? playback.messageId === answer.id : false;
@@ -62,9 +64,13 @@ export function ExpandedAnswerScreen() {
       return;
     }
     setElapsedSeconds(0);
+    setSpeechNotice(null);
     await speechService.speak(
       answer.content,
-      { language: getLanguage(language).speechLocale },
+      {
+        language: getLanguage(language).speechLocale,
+        onNaturalError: (error) => setSpeechNotice(error.message),
+      },
       answer.id,
     );
   };
@@ -126,6 +132,11 @@ export function ExpandedAnswerScreen() {
         contentContainerClassName="px-4 pb-6"
         showsVerticalScrollIndicator={false}
       >
+        {speechNotice ? (
+          <View className="mb-3">
+            <StatusBanner title={t('conversation.speechTitle')} message={speechNotice} />
+          </View>
+        ) : null}
         <Text className="mb-2 text-sm font-semibold text-brand">Answer</Text>
         {headline ? (
           <Text className="mb-3 text-[26px] font-bold leading-9 text-ink dark:text-white">

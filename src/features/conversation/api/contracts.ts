@@ -41,6 +41,7 @@ interface ApiVoiceAction {
 }
 
 export interface ApiQueryResult {
+  correlation_id?: string | null;
   conversation_id: string;
   user_message: ApiMessage;
   assistant_message: ApiMessage;
@@ -91,6 +92,7 @@ export function mapApiQueryResult(result: ApiQueryResult): QueryResult {
   const assistantMessage = mapApiMessage(result.assistant_message);
   assistantMessage.language = { preferred: result.language.preferred_language };
   return {
+    ...(result.correlation_id ? { correlationId: result.correlation_id } : {}),
     conversationId: result.conversation_id,
     userMessage,
     assistantMessage,

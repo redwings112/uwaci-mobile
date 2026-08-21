@@ -94,7 +94,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const streamSession = useRef<SpeechStreamSession | null>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focused = useRef(true);
-  const [conversationLoop, setConversationLoop] = useState(true);
+  const [conversationLoop, setConversationLoop] = useState(false);
   const requestedConversationId =
     conversationId && conversationId !== 'new' ? conversationId : null;
   const remoteConversation = useGetConversationQuery(requestedConversationId ?? '', {
@@ -188,7 +188,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   useFocusEffect(
     useCallback(() => {
       focused.current = true;
-      setConversationLoop(true);
       return () => {
         focused.current = false;
       };
@@ -248,6 +247,10 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
             onDone: finishSpeaking,
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
+            onNaturalError: (error) => {
+              setConversationLoop(false);
+              dispatch(requestFailed(error.message));
+            },
           },
           `voice-stream-${Date.now()}`,
         )

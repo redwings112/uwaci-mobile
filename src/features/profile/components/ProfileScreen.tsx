@@ -49,16 +49,11 @@ const groups: readonly { id: string; rows: readonly ProfileRow[] }[] = [
         href: '/(app)/privacy',
       },
       {
-        icon: 'creditCard',
-        id: 'subscription',
-        key: '',
-        color: colors.cyan,
-      },
-      {
         icon: 'activity',
         id: 'usage',
         key: '',
         color: colors.accent,
+        href: '/(app)/usage' as Href,
       },
     ],
   },
@@ -179,19 +174,6 @@ export function ProfileScreen({ pipe = 'pipe0' }: { pipe?: PipeId }) {
           </View>
           <AppIcon color="#777789" name="chevronRight" size={24} />
         </SurfaceCard>
-        <SurfaceCard className="mt-3 flex-row items-center p-3">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-brand">
-            <AppIcon color="#FFFFFF" name="sparkle" size={25} />
-          </View>
-          <View className="ml-3 flex-1">
-            <Text className="text-xs font-semibold text-ink">{t('profile.plusTitle')}</Text>
-            <Text className="mt-1 text-xs leading-4 text-muted">{t('profile.plusBody')}</Text>
-          </View>
-          <Pressable className="min-h-9 items-center justify-center rounded-full bg-violet px-4">
-            <Text className="text-xs font-semibold text-white">{t('profile.upgrade')}</Text>
-          </Pressable>
-        </SurfaceCard>
-
         {groups.map((group) => (
           <View key={group.id} className="mt-3">
             <Text className="mb-2 ml-1 text-xs font-semibold text-muted">

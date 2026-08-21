@@ -181,6 +181,9 @@ export function ConversationScreen({
               setSpeechNotice(t('conversation.speechUnavailable'));
               dispatch(voiceStatusChanged('idle'));
             },
+            onNaturalError: (error) => {
+              if (mounted.current) setSpeechNotice(error.message);
+            },
           },
           result.assistantMessage.id,
         );

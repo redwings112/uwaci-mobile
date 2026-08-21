@@ -10,6 +10,7 @@ import { isAnswerSaved, toggleSavedAnswer } from '@/features/library/storage/lib
 import { speechService } from '@/core/speech/speechService';
 import { useSpeechPlayback } from '@/core/speech/useSpeechPlayback';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
+import { StatusBanner } from '@/shared/components/StatusBanner/StatusBanner';
 import { SurfaceCard } from '@/shared/components/SurfaceCard/SurfaceCard';
 import { UwaciLogo } from '@/shared/components/UwaciLogo/UwaciLogo';
 import { useAppSelector } from '@/store/hooks';
@@ -51,6 +52,7 @@ export function AssistantMessage({
   const [expanded, setExpanded] = useState(false);
   const [actionsVisible, setActionsVisible] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [speechNotice, setSpeechNotice] = useState<string | null>(null);
   const mounted = useRef(true);
   const playback = useSpeechPlayback();
   const activePlayback = playback.messageId === message.id && playback.status !== 'idle';
@@ -132,11 +134,13 @@ export function AssistantMessage({
       return;
     }
     setElapsedSeconds(0);
+    setSpeechNotice(null);
     await speechService.speak(
       message.content,
       {
         language: getLanguage(language).speechLocale,
         rate,
+        onNaturalError: (error) => setSpeechNotice(error.message),
       },
       message.id,
     );
@@ -195,6 +199,11 @@ export function AssistantMessage({
           </Pressable>
         </View>
       </View>
+      {speechNotice ? (
+        <View className="mb-2">
+          <StatusBanner title={t('conversation.speechTitle')} message={speechNotice} />
+        </View>
+      ) : null}
       <View className={collapsed ? 'max-h-64 overflow-hidden' : ''}>
         <MarkdownMessage content={message.content} />
         {collapsed ? (

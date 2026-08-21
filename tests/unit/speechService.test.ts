@@ -83,6 +83,12 @@ describe('speech-ready answer text', () => {
     ).toBe('Example. It works.');
   });
 
+  it('removes punctuation and formatting symbols from Lingala speech', () => {
+    expect(prepareTextForSpeech('Mbote, moninga. # Tokende!', 'ln-CD')).toBe(
+      'Mbote moninga Tokende',
+    );
+  });
+
   it('passes speech-ready text to the native speech engine', async () => {
     await speechService.speak('### About a Boy\n- A short history', { language: 'en-US' });
 
@@ -95,6 +101,31 @@ describe('speech-ready answer text', () => {
         pitch: 1.02,
       }),
     );
+  });
+
+  it('does not replace unavailable Lingala speech with the English device voice', async () => {
+    const onUnavailable = jest.fn();
+
+    await speechService.speak('Mbote, moninga.', { language: 'ln-CD', onUnavailable });
+
+    expect(Speech.speak).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports exhausted natural-speech credits and falls back to the device voice', async () => {
+    const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
+    const onNaturalError = jest.fn();
+    natural.play.mockResolvedValueOnce('usage_limit_exceeded');
+
+    await speechService.speak('The answer remains available.', {
+      language: 'en-US',
+      onNaturalError,
+    });
+
+    expect(onNaturalError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'USAGE_LIMIT_EXCEEDED', retryable: false }),
+    );
+    expect(Speech.speak).toHaveBeenCalled();
   });
 
   it('queues a complete sentence before the streamed answer finishes', async () => {

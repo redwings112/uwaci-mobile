@@ -25,4 +25,15 @@ describe('mapApiError', () => {
     expect(error.message).toContain('longer');
     expect(error.message).not.toContain('connection');
   });
+
+  it.each([
+    ['USAGE_LIMIT_EXCEEDED', false],
+    ['USAGE_METERING_UNAVAILABLE', true],
+    ['RATE_LIMITED', true],
+  ] as const)('maps %s with the intended retry behavior', (code, retryable) => {
+    const error = mapApiError({ data: { error: { code } } });
+    expect(error.code).toBe(code);
+    expect(error.retryable).toBe(retryable);
+    expect(error.message).not.toContain('provider');
+  });
 });

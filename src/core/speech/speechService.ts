@@ -1,12 +1,11 @@
 import * as Speech from 'expo-speech';
 import { Platform } from 'react-native';
 
+import { mapApiError } from '@/core/errors/mapApiError';
+
 import { prepareTextForSpeech } from './speechText';
 import type { SpeakOptions } from './speechTypes';
-import {
-  naturalSpeechService,
-  type PreparedNaturalSpeech,
-} from './naturalSpeechService';
+import { naturalSpeechService, type PreparedNaturalSpeech } from './naturalSpeechService';
 
 export type SpeechPlaybackStatus = 'idle' | 'speaking' | 'paused';
 
@@ -19,6 +18,26 @@ let snapshot: SpeechPlaybackSnapshot = { status: 'idle', messageId: null };
 const listeners = new Set<() => void>();
 let availableVoicesPromise: ReturnType<typeof Speech.getAvailableVoicesAsync> | null = null;
 let activeStreamCancel: (() => void) | null = null;
+
+type NaturalUsageFailure = 'usage_limit_exceeded' | 'rate_limited' | 'metering_unavailable';
+
+function naturalFailureCode(result: NaturalUsageFailure) {
+  if (result === 'usage_limit_exceeded') return 'USAGE_LIMIT_EXCEEDED' as const;
+  if (result === 'rate_limited') return 'RATE_LIMITED' as const;
+  return 'USAGE_METERING_UNAVAILABLE' as const;
+}
+
+function isNaturalUsageFailure(result: string): result is NaturalUsageFailure {
+  return (
+    result === 'usage_limit_exceeded' ||
+    result === 'rate_limited' ||
+    result === 'metering_unavailable'
+  );
+}
+
+function reportNaturalUsageFailure(result: NaturalUsageFailure, options: SpeakOptions): void {
+  options.onNaturalError?.(mapApiError({ error: { code: naturalFailureCode(result) } }));
+}
 
 export interface SpeechStreamSession {
   enqueue(text: string): void;
@@ -39,18 +58,26 @@ function updatePlayback(status: SpeechPlaybackStatus, messageId: string | null =
   listeners.forEach((listener) => listener());
 }
 
-async function resolveNativeVoice(language?: string): Promise<{
-  language?: string;
-  voice?: string;
-}> {
-  if (!language) return {};
+interface NativeVoiceSelection {
+  available: boolean;
+  options: { language?: string; voice?: string };
+}
+
+async function resolveNativeVoice(language?: string): Promise<NativeVoiceSelection> {
+  if (!language) return { available: true, options: {} };
   try {
     const voices = await availableVoices();
     const availableVoice = resolveSpeechVoice(language, voices);
-    if (!availableVoice) return {};
-    return { language: availableVoice.language, voice: availableVoice.identifier };
+    if (!availableVoice) return { available: false, options: {} };
+    return {
+      available: true,
+      options: { language: availableVoice.language, voice: availableVoice.identifier },
+    };
   } catch {
-    return { language };
+    // If voice enumeration itself fails, let the platform resolve the requested
+    // locale. A confirmed missing locale is handled above and never falls back
+    // silently to an English default voice.
+    return { available: true, options: { language } };
   }
 }
 
@@ -124,10 +151,16 @@ export const speechService = {
       options.onStopped?.();
       return;
     }
-    const { language, voice } = await resolveNativeVoice(options.language);
+    if (isNaturalUsageFailure(naturalResult)) reportNaturalUsageFailure(naturalResult, options);
+    const nativeVoice = await resolveNativeVoice(options.language);
+    if (!nativeVoice.available) {
+      updatePlayback('idle');
+      options.onError?.();
+      options.onUnavailable?.();
+      return;
+    }
     Speech.speak(spokenText, {
-      ...(language ? { language } : {}),
-      ...(voice ? { voice } : {}),
+      ...nativeVoice.options,
       rate: options.rate ?? 0.96,
       pitch: options.pitch ?? 1.02,
       onDone: () => {
@@ -159,6 +192,7 @@ export const speechService = {
     let finished = false;
     let cancelled = false;
     let failed = false;
+    let naturalUsageFailureReported = false;
     let playbackChain = Promise.resolve();
     const preparedNaturalSpeech = new Set<PreparedNaturalSpeech>();
 
@@ -172,7 +206,7 @@ export const speechService = {
     const speakNativeChunk = (text: string): Promise<'done' | 'stopped' | 'error'> =>
       new Promise((resolve) => {
         Speech.speak(text, {
-          ...nativeVoice,
+          ...nativeVoice.options,
           rate: options.rate ?? 0.96,
           pitch: options.pitch ?? 1.02,
           onDone: () => resolve('done'),
@@ -186,8 +220,15 @@ export const speechService = {
       queued += 1;
       updatePlayback('speaking', messageId ?? null);
       if (!naturalAvailable) {
+        if (!nativeVoice.available) {
+          failed = true;
+          updatePlayback('idle');
+          options.onError?.();
+          options.onUnavailable?.();
+          return;
+        }
         Speech.speak(text, {
-          ...nativeVoice,
+          ...nativeVoice.options,
           rate: options.rate ?? 0.96,
           pitch: options.pitch ?? 1.02,
           onDone: () => {
@@ -224,11 +265,16 @@ export const speechService = {
           return;
         }
         let outcome =
-          typeof naturalSpeech === 'object'
-            ? await naturalSpeech.play()
-            : naturalSpeech;
+          typeof naturalSpeech === 'object' ? await naturalSpeech.play() : naturalSpeech;
+        if (isNaturalUsageFailure(outcome)) {
+          if (!naturalUsageFailureReported) {
+            naturalUsageFailureReported = true;
+            reportNaturalUsageFailure(outcome, options);
+          }
+          outcome = nativeVoice.available ? await speakNativeChunk(text) : 'error';
+        }
         if (outcome === 'unavailable' || outcome === 'error')
-          outcome = await speakNativeChunk(text);
+          outcome = nativeVoice.available ? await speakNativeChunk(text) : 'error';
         if (cancelled) return;
         if (outcome === 'error') {
           if (failed) return;
@@ -252,11 +298,21 @@ export const speechService = {
       if (lastBoundary > 0) {
         queueChunk(buffer.slice(0, lastBoundary));
         buffer = buffer.slice(lastBoundary);
-      } else if (buffer.length > 220) {
-        const splitAt = buffer.lastIndexOf(' ', 200);
-        if (splitAt > 80) {
-          queueChunk(buffer.slice(0, splitAt + 1));
-          buffer = buffer.slice(splitAt + 1);
+      } else {
+        const clauseMatches = [...buffer.matchAll(/[,;:]\s+/g)];
+        const clauseBoundary = clauseMatches.at(-1);
+        const clauseEnd = clauseBoundary
+          ? (clauseBoundary.index ?? 0) + clauseBoundary[0].length
+          : 0;
+        if (clauseEnd >= 64) {
+          queueChunk(buffer.slice(0, clauseEnd));
+          buffer = buffer.slice(clauseEnd);
+        } else if (buffer.length > 170) {
+          const splitAt = buffer.lastIndexOf(' ', 150);
+          if (splitAt > 72) {
+            queueChunk(buffer.slice(0, splitAt + 1));
+            buffer = buffer.slice(splitAt + 1);
+          }
         }
       }
     };

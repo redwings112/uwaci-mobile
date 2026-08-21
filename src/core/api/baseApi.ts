@@ -12,7 +12,7 @@ export const baseApi = createApi({
     prepareHeaders,
     timeout: 30_000,
   }),
-  tagTypes: ['Conversation', 'Health'],
+  tagTypes: ['Conversation', 'Health', 'Usage'],
   endpoints: (builder) => ({
     liveHealth: builder.query<{ status: string }, void>({
       query: () => '/health/live',

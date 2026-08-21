@@ -51,6 +51,7 @@ export const conversationApi = baseApi.injectEndpoints({
         mapApiQueryResult(unwrapApiResponse(response)),
       invalidatesTags: (_result, _error, request) => [
         { type: 'Conversation', id: 'LIST' },
+        'Usage',
         ...(request.conversation_id
           ? [{ type: 'Conversation' as const, id: request.conversation_id }]
           : []),

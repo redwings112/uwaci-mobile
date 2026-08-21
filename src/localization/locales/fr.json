@@ -69,6 +69,8 @@
     "TRANSCRIPTION_LOW_CONFIDENCE": "Essaie de répéter, s’il te plaît.",
     "PROVIDER_TIMEOUT": "Uwaci met plus de temps que prévu. Réessaie.",
     "RATE_LIMITED": "Le service vocal est momentanément occupé. Réessaie dans un instant.",
+    "USAGE_LIMIT_EXCEEDED": "Tu as utilisé les crédits gratuits de ce mois. Ils seront renouvelés au début de ta prochaine période d’utilisation.",
+    "USAGE_METERING_UNAVAILABLE": "Uwaci ne peut pas mesurer cette demande de façon fiable pour le moment. Réessaie dans un instant.",
     "VOICE_TURN_IN_PROGRESS": "Uwaci répond encore à ton dernier message vocal. Interromps-la avant de parler de nouveau.",
     "AUTHENTICATION_REQUIRED": "Reconnecte-toi pour continuer.",
     "NETWORK_ERROR": "Vérifie ta connexion et réessaie.",
@@ -244,9 +246,6 @@
     "guestEmail": "Session invité privée",
     "privateAccount": "Compte privé",
     "freePlan": "Offre gratuite",
-    "plusTitle": "Débloque plus avec Uwaci Plus",
-    "plusBody": "Plus d’utilisation quotidienne, des réponses plus rapides, l’envoi de fichiers et des fonctions avancées.",
-    "upgrade": "Passer à Plus",
     "logOut": "Se déconnecter",
     "autoDetect": "Détection auto · {{language}}",
     "themeMode": "Mode {{mode}}",
@@ -259,13 +258,9 @@
         "title": "Confidentialité et sécurité",
         "subtitle": "Gère tes données et ta confidentialité"
       },
-      "subscription": {
-        "title": "Abonnement",
-        "subtitle": "Gère ton offre et ta facturation"
-      },
       "usage": {
         "title": "Utilisation",
-        "subtitle": "Vois ton activité et tes limites quotidiennes"
+        "subtitle": "Consulte tes crédits gratuits mensuels"
       },
       "language": {
         "title": "Langue",
@@ -292,6 +287,34 @@
         "subtitle": "Version 1.0.0"
       }
     }
+  },
+  "usage": {
+    "title": "Utilisation",
+    "subtitle": "Les crédits de ton offre gratuite et ta période mensuelle actuelle.",
+    "goBack": "Retour",
+    "loading": "Chargement de l’utilisation",
+    "loadErrorTitle": "Utilisation indisponible",
+    "currentPlan": "Offre actuelle",
+    "active": "Active",
+    "futurePlans": "Aucune offre supplémentaire n’est disponible pour le moment.",
+    "creditsTitle": "Crédits mensuels",
+    "creditsRemaining": "crédits restants",
+    "usedOfTotal": "{{used}} utilisés sur {{total}}",
+    "progressA11y": "Utilisation des crédits mensuels",
+    "percentageUsed": "{{percentage}} % utilisés",
+    "nearLimitTitle": "Tes crédits diminuent",
+    "nearLimitMessage": "Tu approches de la limite de crédits gratuits de ce mois.",
+    "exhaustedTitle": "Crédits mensuels utilisés",
+    "exhaustedMessage": "Les demandes par texte, voix et lecture naturelle seront de nouveau disponibles à ta prochaine période d’utilisation.",
+    "configurationTitle": "Utilisation temporairement indisponible",
+    "configurationMessage": "Uwaci ne peut pas calculer les crédits de façon fiable pour le moment. Réessaie plus tard.",
+    "periodTitle": "Période d’utilisation actuelle",
+    "periodStart": "Début",
+    "resetDate": "Renouvellement",
+    "refresh": "Actualiser l’utilisation",
+    "refreshing": "Actualisation…",
+    "planA11y": "Offre actuelle : {{plan}}",
+    "remainingA11y": "{{remaining}} crédits restants"
   },
   "feedback": {
     "title": "Aide à améliorer Uwaci",

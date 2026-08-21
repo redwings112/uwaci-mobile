@@ -3,13 +3,23 @@ import { File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { appConfig } from '@/application/config/appConfig';
+import { baseApi } from '@/core/api/baseApi';
 import { getAccessToken } from '@/core/auth/authSession';
+import { mapApiError } from '@/core/errors/mapApiError';
+import { store } from '@/store';
 
 interface CapabilitiesEnvelope {
   data?: { natural_tts?: boolean };
 }
 
-export type NaturalPlaybackResult = 'done' | 'stopped' | 'unavailable' | 'error';
+export type NaturalPlaybackResult =
+  | 'done'
+  | 'stopped'
+  | 'unavailable'
+  | 'error'
+  | 'usage_limit_exceeded'
+  | 'rate_limited'
+  | 'metering_unavailable';
 
 export interface PreparedNaturalSpeech {
   play(): Promise<NaturalPlaybackResult>;
@@ -47,6 +57,22 @@ function languageCode(locale?: string): string {
   return locale?.split('-', 1)[0]?.toLowerCase() || 'en';
 }
 
+function idempotencyKey(): string {
+  return `tts-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+}
+
+async function playbackError(response: Response): Promise<NaturalPlaybackResult> {
+  try {
+    const mapped = mapApiError(await response.json());
+    if (mapped.code === 'USAGE_LIMIT_EXCEEDED') return 'usage_limit_exceeded';
+    if (mapped.code === 'RATE_LIMITED') return 'rate_limited';
+    if (mapped.code === 'USAGE_METERING_UNAVAILABLE') return 'metering_unavailable';
+  } catch {
+    // A non-JSON proxy error is handled by status below.
+  }
+  return response.status === 503 ? 'unavailable' : 'error';
+}
+
 async function createPreparedSpeech(
   text: string,
   language?: string,
@@ -60,6 +86,7 @@ async function createPreparedSpeech(
       headers: {
         Accept: 'audio/mpeg',
         'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey(),
         ...(await authorizationHeaders()),
       },
       body: JSON.stringify({ text, language: languageCode(language) }),
@@ -67,8 +94,9 @@ async function createPreparedSpeech(
     });
     if (!response.ok) {
       if (response.status === 429 || response.status >= 500) capabilityPromise = null;
-      return response.status === 503 ? 'unavailable' : 'error';
+      return playbackError(response);
     }
+    store.dispatch(baseApi.util.invalidateTags(['Usage']));
 
     let uri: string;
     let cleanupUnderlyingFile: () => void;

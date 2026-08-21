@@ -17,6 +17,8 @@ The app lets a user choose a preferred conversation language, ask a question by 
 - Jest, React Native Testing Library, ESLint, Prettier, Husky, and lint-staged
 
 Route files under `app/` stay thin. Product behavior lives under `src/features/`; cross-cutting platform capabilities live under `src/core/`; genuinely reusable UI lives under `src/shared/`. See [architecture documentation](docs/architecture/ARCHITECTURE.md).
+The server-authoritative Free plan and usage experience is documented in
+[Free plan and usage](docs/architecture/USAGE_CREDITS.md).
 
 ## Prerequisites
 

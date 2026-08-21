@@ -21,6 +21,8 @@ const knownCodes = new Set<ErrorCode>([
   'PROVIDER_TIMEOUT',
   'STORAGE_ERROR',
   'RATE_LIMITED',
+  'USAGE_LIMIT_EXCEEDED',
+  'USAGE_METERING_UNAVAILABLE',
   'VOICE_TURN_IN_PROGRESS',
   'AUTHENTICATION_REQUIRED',
   'FORBIDDEN',
@@ -74,7 +76,10 @@ export function mapApiError(value: unknown): AppError {
     ? (rawCode as ErrorCode)
     : 'UNKNOWN_ERROR';
   const retryable =
-    code === 'PROVIDER_TIMEOUT' || code === 'NETWORK_ERROR' || code === 'RATE_LIMITED';
+    code === 'PROVIDER_TIMEOUT' ||
+    code === 'NETWORK_ERROR' ||
+    code === 'RATE_LIMITED' ||
+    code === 'USAGE_METERING_UNAVAILABLE';
   const requestId =
     isRecord(envelope.meta) && typeof envelope.meta.request_id === 'string'
       ? envelope.meta.request_id

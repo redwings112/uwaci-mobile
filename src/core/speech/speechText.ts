@@ -34,12 +34,22 @@ function withSentencePause(value: string): string {
   return /[.!?…:]$/.test(value) ? value : `${value}.`;
 }
 
+function normalizeLanguageSpecificSpeech(value: string, language?: string): string {
+  const languageCode = language?.split('-', 1)[0]?.toLowerCase();
+  if (languageCode !== 'ln') return value;
+
+  return value
+    .replace(/[#.,;:!?…。！？،؛]+/g, ' ')
+    .replace(/[$%&*+/<=>@\\^_|~()[\]{}]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /**
  * Converts rendered-answer Markdown into natural text for a speech engine.
  * The visual message keeps its Markdown; only the TTS input is transformed.
  */
 export function prepareTextForSpeech(markdown: string, language?: string): string {
-  void language;
   const spokenBlocks: string[] = [];
   let inCodeFence = false;
 
@@ -76,8 +86,9 @@ export function prepareTextForSpeech(markdown: string, language?: string): strin
     if (text) spokenBlocks.push(text);
   }
 
-  return spokenBlocks
+  const spokenText = spokenBlocks
     .join(' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  return normalizeLanguageSpecificSpeech(spokenText, language);
 }

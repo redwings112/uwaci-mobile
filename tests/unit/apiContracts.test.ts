@@ -35,6 +35,7 @@ describe('backend API contract mapping', () => {
 
   it('preserves code-switching and transcription confidence', () => {
     const result = mapApiQueryResult({
+      correlation_id: '11111111-1111-4111-8111-111111111111',
       conversation_id: 'conversation-1',
       user_message: userMessage,
       assistant_message: assistantMessage,
@@ -53,6 +54,7 @@ describe('backend API contract mapping', () => {
       },
     });
     expect(result.conversationId).toBe('conversation-1');
+    expect(result.correlationId).toBe('11111111-1111-4111-8111-111111111111');
     expect(result.userMessage.language?.detected).toEqual(['fr', 'en']);
     expect(result.userMessage.transcription?.confidence).toBe(0.91);
     expect(result.transcription?.codeSwitchingDetected).toBe(true);
