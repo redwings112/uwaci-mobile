@@ -5,8 +5,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next';
 
 import { getLanguage, isUwaciLanguage } from '@/core/constants/languages';
+import { getLanguage, isUwaciLanguage } from '@/core/constants/languages';
 import { ensureAuthSession } from '@/core/auth/authSession';
 import { mapApiError } from '@/core/errors/mapApiError';
+import { speechService, type SpeechStreamSession } from '@/core/speech/speechService';
 import { speechService, type SpeechStreamSession } from '@/core/speech/speechService';
 import { useSubmitFeedbackMutation } from '@/features/feedback/api/feedbackApi';
 import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
@@ -19,6 +21,13 @@ import { RecordingIndicator } from '@/features/voice/components/RecordingIndicat
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
 import { useSilenceAutoSubmit } from '@/features/voice/hooks/useSilenceAutoSubmit';
+import {
+  voiceReset,
+  voiceStatusChanged,
+  voiceThinkingCompleted,
+  voiceThinkingReset,
+  voiceThinkingStarted,
+} from '@/features/voice/state/voiceSlice';
 import {
   voiceReset,
   voiceStatusChanged,
@@ -93,6 +102,7 @@ export function ConversationScreen({
   const uiLanguage = useAppSelector(selectUiLanguage);
   const voiceResponsesEnabled = useAppSelector((state) => state.settings.voiceResponsesEnabled);
   const activeStage = useAppSelector((state) => state.voice.thinking.activeStage);
+  const activeStage = useAppSelector((state) => state.voice.thinking.activeStage);
   const recorder = useVoiceRecorder();
   const voiceQuery = useVoiceQuery();
   const [sendTextQuery] = useSendTextQueryMutation();
@@ -154,6 +164,7 @@ export function ConversationScreen({
 
   const acceptResult = useCallback(
     async (result: QueryResult, optimisticMessageId?: string, speakResponse = true) => {
+    async (result: QueryResult, optimisticMessageId?: string, speakResponse = true) => {
       if (!mounted.current) return;
       dispatch(conversationOpened(result.conversationId));
       if (optimisticMessageId)
@@ -165,6 +176,13 @@ export function ConversationScreen({
       dispatch(requestFinished());
       setRecoveryTranscript(null);
       setSpeechNotice(null);
+      const responseLanguage =
+        result.voiceAction?.language ??
+        (isUwaciLanguage(result.assistantMessage.language?.primary)
+          ? result.assistantMessage.language.primary
+          : isUwaciLanguage(result.assistantMessage.language?.preferred)
+            ? result.assistantMessage.language.preferred
+            : language);
       const responseLanguage =
         result.voiceAction?.language ??
         (isUwaciLanguage(result.assistantMessage.language?.primary)
@@ -336,7 +354,66 @@ export function ConversationScreen({
             },
           },
         );
+      dispatch(voiceThinkingReset());
+      const pendingSpeech: string[] = [];
+      let firstDelta = true;
+      let streamSession: SpeechStreamSession | null = null;
+      const speechReady = voiceResponsesEnabled
+        ? speechService
+            .createStream({
+              language: getLanguage(language).speechLocale,
+              onStart: () => dispatch(voiceStatusChanged('speaking')),
+              onDone: () => dispatch(voiceStatusChanged('idle')),
+              onStopped: () => dispatch(voiceStatusChanged('idle')),
+              onError: () => {
+                if (mounted.current) setSpeechNotice(t('conversation.speechUnavailable'));
+                dispatch(voiceStatusChanged('idle'));
+              },
+            })
+            .then((session) => {
+              streamSession = session;
+              pendingSpeech.splice(0).forEach((chunk) => session.enqueue(chunk));
+              return session;
+            })
+        : null;
+      try {
+        const result = await voiceQuery.submit(
+          {
+            uri: recording.uri,
+            preferredLanguage: language,
+            ...(serverConversationId ? { conversationId: serverConversationId } : {}),
+          },
+          {
+            onStage: (event) => {
+              if (event.status === 'active') dispatch(voiceThinkingStarted(event.stage));
+              else
+                dispatch(
+                  voiceThinkingCompleted({
+                    stage: event.stage,
+                    durationMs: event.durationMs ?? 0,
+                  }),
+                );
+            },
+            onDelta: (text) => {
+              if (!voiceResponsesEnabled) return;
+              if (firstDelta) {
+                firstDelta = false;
+              }
+              if (streamSession) streamSession.enqueue(text);
+              else pendingSpeech.push(text);
+            },
+          },
+        );
         if (!mounted.current) return;
+        await acceptResult(result, undefined, false);
+        if (speechReady) {
+          const session = await speechReady;
+          if (firstDelta) {
+            dispatch(voiceStatusChanged('speaking'));
+            session.enqueue(result.assistantMessage.content);
+          }
+          session.finish();
+        }
         await acceptResult(result, undefined, false);
         if (speechReady) {
           const session = await speechReady;
@@ -346,6 +423,7 @@ export function ConversationScreen({
           session.finish();
         }
       } catch (error: unknown) {
+        if (streamSession) await streamSession.cancel();
         if (speechReady)
           await speechReady.then((session) => session.cancel()).catch(() => undefined);
         if (!mounted.current) return;
@@ -443,6 +521,7 @@ export function ConversationScreen({
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <View className="flex-1" style={{ paddingBottom: keyboardHeight }}>
         <AppHeader />
+        <AppHeader />
         <View className="flex-row items-center justify-between px-3 pb-2">
           <Pressable
             className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
@@ -508,6 +587,7 @@ export function ConversationScreen({
           </View>
         ) : null}
         <UsageExhaustedBanner />
+        <UsageExhaustedBanner />
         {request.errorMessage || recorder.errorMessage ? (
           <View className="px-3">
             <ErrorState
@@ -556,6 +636,11 @@ export function ConversationScreen({
         ) : null}
         {busy ? (
           <Typography className="px-3 py-1 text-center text-muted" accessibilityLiveRegion="polite">
+            {activeStage === 'transcribing'
+              ? t('voice.stageTranscribing')
+              : activeStage === 'reasoning'
+                ? t('voice.stageReasoning')
+                : t('voice.preparingAnswer')}
             {activeStage === 'transcribing'
               ? t('voice.stageTranscribing')
               : activeStage === 'reasoning'
