@@ -3,7 +3,10 @@ import { Platform } from 'react-native';
 
 import { prepareTextForSpeech } from './speechText';
 import type { SpeakOptions } from './speechTypes';
-import { naturalSpeechService } from './naturalSpeechService';
+import {
+  naturalSpeechService,
+  type PreparedNaturalSpeech,
+} from './naturalSpeechService';
 
 export type SpeechPlaybackStatus = 'idle' | 'speaking' | 'paused';
 
@@ -144,9 +147,12 @@ export const speechService = {
   },
   async createStream(options: SpeakOptions = {}, messageId?: string): Promise<SpeechStreamSession> {
     activeStreamCancel?.();
+    naturalSpeechService.stop();
     await Speech.stop();
-    const nativeVoice = await resolveNativeVoice(options.language);
-    const naturalAvailable = await naturalSpeechService.isAvailable();
+    const [nativeVoice, naturalAvailable] = await Promise.all([
+      resolveNativeVoice(options.language),
+      naturalSpeechService.isAvailable(),
+    ]);
     let buffer = '';
     let queued = 0;
     let completed = 0;
@@ -154,6 +160,7 @@ export const speechService = {
     let cancelled = false;
     let failed = false;
     let playbackChain = Promise.resolve();
+    const preparedNaturalSpeech = new Set<PreparedNaturalSpeech>();
 
     const finishIfReady = () => {
       if (!cancelled && finished && completed >= queued) {
@@ -188,7 +195,9 @@ export const speechService = {
             finishIfReady();
           },
           onStopped: () => {
+            completed += 1;
             if (!cancelled) options.onStopped?.();
+            finishIfReady();
           },
           onError: () => {
             if (failed || cancelled) return;
@@ -200,9 +209,24 @@ export const speechService = {
         });
         return;
       }
+      const prepared = naturalSpeechService.prepare(text, options.language);
+      void prepared.then((result) => {
+        if (typeof result !== 'object') return;
+        if (cancelled) result.discard();
+        else preparedNaturalSpeech.add(result);
+      });
       playbackChain = playbackChain.then(async () => {
         if (cancelled || failed) return;
-        let outcome = await naturalSpeechService.play(text, options.language);
+        const naturalSpeech = await prepared;
+        if (typeof naturalSpeech === 'object') preparedNaturalSpeech.delete(naturalSpeech);
+        if (cancelled) {
+          if (typeof naturalSpeech === 'object') naturalSpeech.discard();
+          return;
+        }
+        let outcome =
+          typeof naturalSpeech === 'object'
+            ? await naturalSpeech.play()
+            : naturalSpeech;
         if (outcome === 'unavailable' || outcome === 'error')
           outcome = await speakNativeChunk(text);
         if (cancelled) return;
@@ -214,10 +238,7 @@ export const speechService = {
           options.onUnavailable?.();
           return;
         }
-        if (outcome === 'stopped') {
-          options.onStopped?.();
-          return;
-        }
+        if (outcome === 'stopped') options.onStopped?.();
         completed += 1;
         finishIfReady();
       });
@@ -245,13 +266,13 @@ export const speechService = {
       buffer = '';
       activeStreamCancel = null;
       updatePlayback('idle');
+      preparedNaturalSpeech.forEach((speech) => speech.discard());
+      preparedNaturalSpeech.clear();
       naturalSpeechService.stop();
       await Speech.stop();
     };
     activeStreamCancel = () => {
-      cancelled = true;
-      buffer = '';
-      naturalSpeechService.stop();
+      void cancel();
     };
     return {
       enqueue(text: string) {

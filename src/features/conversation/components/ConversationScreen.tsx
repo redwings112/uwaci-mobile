@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Keyboard, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { getLanguage } from '@/core/constants/languages';
@@ -110,7 +102,9 @@ export function ConversationScreen({
   const mounted = useRef(true);
   const microphoneActionInProgress = useRef(false);
   const cancelRecorder = useRef(recorder.cancel);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
+  const keyboardVisible = keyboardHeight > 0;
   const isLocalConversation = isDraftConversation(conversationId);
   const serverConversationId =
     activeConversationId && !isDraftConversation(activeConversationId)
@@ -125,14 +119,18 @@ export function ConversationScreen({
 
   useEffect(() => {
     mounted.current = true;
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (event) =>
+      setKeyboardHeight(Math.max(0, event.endCoordinates.height)),
+    );
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
     return () => {
       mounted.current = false;
       show.remove();
       hide.remove();
     };
-  }, []);
+  }, [insets.bottom]);
 
   useEffect(() => {
     dispatch(conversationOpened(conversationId));
@@ -334,7 +332,7 @@ export function ConversationScreen({
 
   const openVoiceMode = () => {
     Keyboard.dismiss();
-    
+
     router.replace({
       pathname: '/(app)',
       ...(serverConversationId ? { params: { conversationId: serverConversationId } } : {}),
@@ -366,14 +364,8 @@ export function ConversationScreen({
       'response_received',
     ].includes(recorder.status);
   return (
-    <SafeAreaView
-      className="flex-1 bg-canvas dark:bg-[#111126]"
-      edges={keyboardVisible ? ['top'] : ['top', 'bottom']}
-    >
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
+      <View className="flex-1" style={{ paddingBottom: keyboardHeight }}>
         <AppHeader onMenu={() => openMenu('pipe0')} />
         <View className="flex-row items-center justify-between px-3 pb-2">
           <Pressable
@@ -549,7 +541,7 @@ export function ConversationScreen({
           onClose={() => setFeedbackVisible(false)}
           onSubmit={(category) => void sendFeedback(category)}
         />
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

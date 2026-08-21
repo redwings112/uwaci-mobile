@@ -24,7 +24,6 @@ export function ConversationList({
   return (
     <FlatList
       ref={list}
-      automaticallyAdjustKeyboardInsets
       className="flex-1"
       onContentSizeChange={scrollToLatest}
       contentContainerClassName="grow px-3 py-3"

@@ -8,8 +8,11 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "android:clean-native": "node scripts/android-native-build.mjs --clean-only",
+    "android:release": "node scripts/android-native-build.mjs",
+    "android:release:universal": "node scripts/android-native-build.mjs --all-architectures",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint app src tests scripts eslint.config.mjs babel.config.js metro.config.js tailwind.config.js jest.config.js",
     "lint:fix": "npm run lint -- --fix",

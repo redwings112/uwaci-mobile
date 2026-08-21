@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,7 @@ import {
   voiceThinkingStarted,
 } from '@/features/voice/state/voiceSlice';
 import { getThinkingPrompt } from '@/features/voice/voicePrompts';
+import { HANDS_FREE_RESUME_DELAY_MS, shouldResumeListening } from '@/features/voice/handsFree';
 import { registerVoiceTurnCanceller } from '@/features/voice/voiceTurnControl';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
@@ -90,8 +91,10 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const thinkingVisible = useRef(false);
   const turnCancelled = useRef(false);
   const completingVoiceTurn = useRef(false);
-  const handsFreeEnabled = useRef(true);
   const streamSession = useRef<SpeechStreamSession | null>(null);
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focused = useRef(true);
+  const [conversationLoop, setConversationLoop] = useState(true);
   const requestedConversationId =
     conversationId && conversationId !== 'new' ? conversationId : null;
   const remoteConversation = useGetConversationQuery(requestedConversationId ?? '', {
@@ -107,11 +110,16 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   useEffect(
     () => () => {
       mounted.current = false;
-      handsFreeEnabled.current = false;
+      if (resumeTimer.current) clearTimeout(resumeTimer.current);
       void speechService.stop();
     },
     [],
   );
+
+  useEffect(() => {
+    // Resolve device voices and natural-speech capability before the first turn.
+    speechService.prewarm();
+  }, []);
 
   useEffect(() => {
     if (!requestedConversationId) return;
@@ -132,6 +140,11 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const cancelVoiceTurn = useCallback(() => {
     turnCancelled.current = true;
     thinkingVisible.current = false;
+    if (resumeTimer.current) {
+      clearTimeout(resumeTimer.current);
+      resumeTimer.current = null;
+    }
+    setConversationLoop(false);
     abortVoiceQuery();
     void streamSession.current?.cancel();
     streamSession.current = null;
@@ -145,31 +158,69 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     return () => registerVoiceTurnCanceller(null);
   }, [cancelVoiceTurn]);
 
-  const begin = useCallback(async () => {
-    turnCancelled.current = false;
-    handsFreeEnabled.current = true;
-    try {
-      await ensureAuthSession();
-    } catch {
-      router.push({ pathname: '/(auth)/sign-in', params: { next: 'voice' } });
-      return;
-    }
-    if (!mounted.current) return;
-    speechService.prewarm();
-    await speechService.stop();
-    setLiveTranscript(null);
-    setLastProcessingMs(null);
-    dispatch(requestErrorCleared());
-    await recorder.start();
-  }, [dispatch, recorder, router]);
+  const begin = useCallback(
+    async (options: { resumed?: boolean } = {}) => {
+      turnCancelled.current = false;
+      setConversationLoop(true);
+      if (!options.resumed) {
+        try {
+          await ensureAuthSession();
+        } catch {
+          router.push({ pathname: '/(auth)/sign-in', params: { next: 'voice' } });
+          return;
+        }
+      }
+      if (!mounted.current) return;
+      speechService.prewarm();
+      await speechService.stop();
+      setLiveTranscript(null);
+      setLastProcessingMs(null);
+      dispatch(requestErrorCleared());
+      await recorder.start();
+    },
+    [dispatch, recorder, router],
+  );
 
-  const resumeHandsFreeListening = useCallback(() => {
+  const finishSpeaking = useCallback(() => {
     dispatch(voiceStatusChanged('idle'));
-    if (!mounted.current || !handsFreeEnabled.current || turnCancelled.current) return;
-    setTimeout(() => {
-      if (mounted.current && handsFreeEnabled.current && !turnCancelled.current) void begin();
-    }, 180);
-  }, [begin, dispatch]);
+  }, [dispatch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      focused.current = true;
+      setConversationLoop(true);
+      return () => {
+        focused.current = false;
+      };
+    }, []),
+  );
+
+  useEffect(() => {
+    const resume = shouldResumeListening({
+      listening: conversationLoop,
+      status: recorder.status,
+      focused: focused.current,
+      busy,
+      speaking,
+      hasError: requestError != null || recorder.errorMessage != null,
+      turnInFlight: completingVoiceTurn.current,
+    });
+    if (!resume || recording || resumeTimer.current) return;
+    resumeTimer.current = setTimeout(() => {
+      resumeTimer.current = null;
+      if (mounted.current && focused.current) void begin({ resumed: true });
+    }, HANDS_FREE_RESUME_DELAY_MS);
+  }, [
+    begin,
+    busy,
+    conversationLoop,
+    playback.status,
+    recorder.errorMessage,
+    recorder.status,
+    recording,
+    requestError,
+    speaking,
+  ]);
 
   useEffect(() => {
     if (initialActionHandled.current || !startRecording) return;
@@ -194,7 +245,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         .createStream(
           {
             language: getLanguage(language).speechLocale,
-            onDone: resumeHandsFreeListening,
+            onDone: finishSpeaking,
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
           },
@@ -256,6 +307,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       void streamSession.current?.cancel();
       streamSession.current = null;
       leaveThinking();
+      setConversationLoop(false);
       dispatch(requestFailed(mapApiError(error).message));
     } finally {
       completingVoiceTurn.current = false;
@@ -288,15 +340,13 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
 
   const cancelRecording = async () => {
     if (!recording) return;
+    setConversationLoop(false);
     await recorder.cancel();
-    if (mounted.current) {
-      handsFreeEnabled.current = false;
-      dispatch(requestErrorCleared());
-    }
+    if (mounted.current) dispatch(requestErrorCleared());
   };
 
   const startNewVoiceConversation = async () => {
-    handsFreeEnabled.current = false;
+    setConversationLoop(true);
     await speechService.stop();
     await recorder.cancel();
     streamSession.current = null;
@@ -306,21 +356,31 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     setLiveTranscript(null);
     setLastProcessingMs(null);
     router.replace('/(app)');
-    handsFreeEnabled.current = true;
   };
 
   const switchToType = async () => {
-    handsFreeEnabled.current = false;
+    setConversationLoop(false);
     await speechService.stop();
     await recorder.cancel();
-    
+
     router.replace({
       pathname: '/(app)/conversation/[conversationId]',
       params: { conversationId: serverConversationId ?? 'new', focusComposer: 'true' },
     });
   };
 
-  const statusTitle = recording
+  const awaitingMicrophone =
+    conversationLoop &&
+    !voiceQuery.isLoading &&
+    !speaking &&
+    !requestError &&
+    !recorder.errorMessage &&
+    (recorder.status === 'idle' ||
+      recorder.status === 'ready' ||
+      recorder.status === 'requesting_permission');
+  const listening = recording || awaitingMicrophone;
+
+  const statusTitle = listening
     ? t('voice.listeningTitle')
     : busy
       ? thinking.activeStage
@@ -331,7 +391,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         : messages.length
           ? t('voice.readyNext')
           : t('voice.talkNaturally');
-  const statusCaption = recording
+  const statusCaption = listening
     ? t('voice.listeningCaption')
     : busy
       ? t('voice.thinkingCaption')
@@ -389,7 +449,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
             audioLevel={recorder.audioLevel}
             disabled={voiceQuery.isLoading}
             reduceMotion={reduceMotion}
-            status={recorder.status}
+            status={listening && !recording ? 'recording' : recorder.status}
             onPress={() => void handleOrbPress()}
           />
           <Typography variant="title" className="mt-1 max-w-80 text-center">
@@ -408,10 +468,10 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
           </SurfaceCard>
         ) : null}
 
-        {recording || liveTranscript ? (
+        {listening || liveTranscript ? (
           <View className="mt-4">
             <LiveTranscriptionCard
-              listening={recording}
+              listening={listening}
               placeholder={t('voice.transcriptPlaceholder')}
               reduceMotion={reduceMotion}
               statusLabel={

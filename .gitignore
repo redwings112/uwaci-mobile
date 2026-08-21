@@ -20,7 +20,7 @@ ios/
 *.p12
 *.mobileprovision
 *.cer
-credentials.json
+android/app/credentials.json
 google-services.json
 GoogleService-Info.plist
 

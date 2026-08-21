@@ -5,6 +5,7 @@ import {
   resolveSpeechVoice,
   speechService,
 } from '@/core/speech/speechService';
+import { naturalSpeechService } from '@/core/speech/naturalSpeechService';
 import { prepareTextForSpeech } from '@/core/speech/speechText';
 
 jest.mock('expo-speech', () => ({
@@ -22,6 +23,7 @@ jest.mock('@/core/speech/naturalSpeechService', () => ({
   naturalSpeechService: {
     isAvailable: jest.fn(async () => false),
     play: jest.fn(async () => 'unavailable'),
+    prepare: jest.fn(),
     prewarm: jest.fn(),
     stop: jest.fn(),
   },
@@ -108,5 +110,21 @@ describe('speech-ready answer text', () => {
     expect(Speech.speak).toHaveBeenCalledTimes(1);
     session.finish();
     expect(Speech.speak).toHaveBeenCalledTimes(2);
+  });
+
+  it('prepares the following natural-speech chunk while the first is playing', async () => {
+    const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
+    natural.isAvailable.mockResolvedValue(true);
+    natural.prepare.mockImplementation(async () => ({
+      play: jest.fn(async () => 'done'),
+      discard: jest.fn(),
+    }));
+    const session = await speechService.createStream({ language: 'en-US' });
+
+    session.enqueue('First sentence is ready. ');
+    session.enqueue('Second sentence is already ready. ');
+
+    expect(natural.prepare).toHaveBeenCalledTimes(2);
+    await session.cancel();
   });
 });
