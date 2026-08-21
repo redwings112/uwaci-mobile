@@ -115,17 +115,39 @@ describe('speech-ready answer text', () => {
   it('reports exhausted natural-speech credits and falls back to the device voice', async () => {
     const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
     const onNaturalError = jest.fn();
-    natural.play.mockResolvedValueOnce('usage_limit_exceeded');
+    natural.isAvailable.mockResolvedValueOnce(true);
+    natural.prepare.mockResolvedValueOnce('usage_limit_exceeded');
 
     await speechService.speak('The answer remains available.', {
       language: 'en-US',
       onNaturalError,
     });
+    await Promise.resolve();
 
     expect(onNaturalError).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'USAGE_LIMIT_EXCEEDED', retryable: false }),
     );
     expect(Speech.speak).toHaveBeenCalled();
+  });
+
+  it('breaks a speaker-tapped answer into sentences instead of synthesizing the whole answer', async () => {
+    const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
+    natural.isAvailable.mockResolvedValueOnce(true);
+    natural.prepare.mockImplementation(async () => ({
+      play: jest.fn(async () => 'done'),
+      discard: jest.fn(),
+    }));
+
+    await speechService.speak('First sentence is ready. Second sentence follows.', {
+      language: 'en-US',
+    });
+
+    expect(natural.prepare).toHaveBeenNthCalledWith(1, 'First sentence is ready.', 'en-US');
+    expect(natural.prepare).toHaveBeenNthCalledWith(2, 'Second sentence follows.', 'en-US');
+    expect(natural.prepare).not.toHaveBeenCalledWith(
+      'First sentence is ready. Second sentence follows.',
+      'en-US',
+    );
   });
 
   it('queues a complete sentence before the streamed answer finishes', async () => {
@@ -141,6 +163,18 @@ describe('speech-ready answer text', () => {
     expect(Speech.speak).toHaveBeenCalledTimes(1);
     session.finish();
     expect(Speech.speak).toHaveBeenCalledTimes(2);
+  });
+
+  it('queues a sentence ending at the current stream boundary immediately', async () => {
+    const session = await speechService.createStream({ language: 'en-US' }, 'boundary-answer');
+
+    session.enqueue('The first sentence is ready.');
+
+    expect(Speech.speak).toHaveBeenCalledWith(
+      'The first sentence is ready.',
+      expect.objectContaining({ language: 'en-US', voice: 'enhanced-en' }),
+    );
+    await session.cancel();
   });
 
   it('prepares the following natural-speech chunk while the first is playing', async () => {

@@ -4,22 +4,28 @@ import { Keyboard, Platform, Pressable, ScrollView, Text, View } from 'react-nat
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { getLanguage } from '@/core/constants/languages';
-import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
+import { getLanguage, isUwaciLanguage } from '@/core/constants/languages';
 import { ensureAuthSession } from '@/core/auth/authSession';
 import { mapApiError } from '@/core/errors/mapApiError';
-import { speechService } from '@/core/speech/speechService';
+import { speechService, type SpeechStreamSession } from '@/core/speech/speechService';
 import { useSubmitFeedbackMutation } from '@/features/feedback/api/feedbackApi';
 import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
 import type { FeedbackCategory } from '@/features/feedback/types';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
+import { UsageExhaustedBanner } from '@/features/usage/components/UsageExhaustedBanner';
 import { RecordingIndicator } from '@/features/voice/components/RecordingIndicator';
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
 import { useVoiceRecorder } from '@/features/voice/hooks/useVoiceRecorder';
 import { useSilenceAutoSubmit } from '@/features/voice/hooks/useSilenceAutoSubmit';
-import { voiceReset, voiceStatusChanged } from '@/features/voice/state/voiceSlice';
+import {
+  voiceReset,
+  voiceStatusChanged,
+  voiceThinkingCompleted,
+  voiceThinkingReset,
+  voiceThinkingStarted,
+} from '@/features/voice/state/voiceSlice';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
 import { AppIcon, type AppIconName } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
@@ -76,7 +82,6 @@ export function ConversationScreen({
   focusComposer = false,
 }: ConversationScreenProps) {
   const router = useRouter();
-  const { openMenu } = usePipeNavigation();
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectConversationMessages);
@@ -86,6 +91,7 @@ export function ConversationScreen({
   const auth = useAppSelector((state) => state.auth);
   const language = useAppSelector(selectPreferredLanguage);
   const voiceResponsesEnabled = useAppSelector((state) => state.settings.voiceResponsesEnabled);
+  const activeStage = useAppSelector((state) => state.voice.thinking.activeStage);
   const recorder = useVoiceRecorder();
   const voiceQuery = useVoiceQuery();
   const [sendTextQuery] = useSendTextQueryMutation();
@@ -146,7 +152,7 @@ export function ConversationScreen({
   }, [dispatch, remoteConversation.data]);
 
   const acceptResult = useCallback(
-    async (result: QueryResult, optimisticMessageId?: string) => {
+    async (result: QueryResult, optimisticMessageId?: string, speakResponse = true) => {
       if (!mounted.current) return;
       dispatch(conversationOpened(result.conversationId));
       if (optimisticMessageId)
@@ -158,10 +164,16 @@ export function ConversationScreen({
       dispatch(requestFinished());
       setRecoveryTranscript(null);
       setSpeechNotice(null);
-      const responseLanguage = result.voiceAction?.language ?? language;
+      const responseLanguage =
+        result.voiceAction?.language ??
+        (isUwaciLanguage(result.assistantMessage.language?.primary)
+          ? result.assistantMessage.language.primary
+          : isUwaciLanguage(result.assistantMessage.language?.preferred)
+            ? result.assistantMessage.language.preferred
+            : language);
       if (result.voiceAction?.type === 'language_changed')
         dispatch(preferredLanguageChanged(result.voiceAction.language));
-      if (voiceResponsesEnabled) {
+      if (voiceResponsesEnabled && speakResponse) {
         dispatch(voiceStatusChanged('speaking'));
         await speechService.speak(
           result.assistantMessage.content,
@@ -275,15 +287,72 @@ export function ConversationScreen({
       const recording = await recorder.stop();
       if (!recording || !mounted.current) return;
       dispatch(requestStarted());
+      dispatch(voiceThinkingReset());
+      const pendingSpeech: string[] = [];
+      let firstDelta = true;
+      let streamSession: SpeechStreamSession | null = null;
+      const speechReady = voiceResponsesEnabled
+        ? speechService
+            .createStream({
+              language: getLanguage(language).speechLocale,
+              onDone: () => dispatch(voiceStatusChanged('idle')),
+              onStopped: () => dispatch(voiceStatusChanged('idle')),
+              onError: () => {
+                if (mounted.current) setSpeechNotice(t('conversation.speechUnavailable'));
+                dispatch(voiceStatusChanged('idle'));
+              },
+              onNaturalError: (error) => {
+                if (mounted.current) setSpeechNotice(error.message);
+              },
+            })
+            .then((session) => {
+              streamSession = session;
+              pendingSpeech.splice(0).forEach((chunk) => session.enqueue(chunk));
+              return session;
+            })
+        : null;
       try {
-        const result = await voiceQuery.submit({
-          uri: recording.uri,
-          preferredLanguage: language,
-          ...(serverConversationId ? { conversationId: serverConversationId } : {}),
-        });
+        const result = await voiceQuery.submit(
+          {
+            uri: recording.uri,
+            preferredLanguage: language,
+            ...(serverConversationId ? { conversationId: serverConversationId } : {}),
+          },
+          {
+            onStage: (event) => {
+              if (event.status === 'active') dispatch(voiceThinkingStarted(event.stage));
+              else
+                dispatch(
+                  voiceThinkingCompleted({
+                    stage: event.stage,
+                    durationMs: event.durationMs ?? 0,
+                  }),
+                );
+            },
+            onDelta: (text) => {
+              if (!voiceResponsesEnabled) return;
+              if (firstDelta) {
+                firstDelta = false;
+                dispatch(voiceStatusChanged('speaking'));
+              }
+              if (streamSession) streamSession.enqueue(text);
+              else pendingSpeech.push(text);
+            },
+          },
+        );
         if (!mounted.current) return;
-        await acceptResult(result);
+        await acceptResult(result, undefined, false);
+        if (speechReady) {
+          const session = await speechReady;
+          if (firstDelta) {
+            session.enqueue(result.assistantMessage.content);
+          }
+          dispatch(voiceStatusChanged('speaking'));
+          session.finish();
+        }
       } catch (error: unknown) {
+        if (speechReady)
+          await speechReady.then((session) => session.cancel()).catch(() => undefined);
         if (!mounted.current) return;
         const mapped = mapApiError(error);
         const transcript = mapped.details?.transcript;
@@ -369,7 +438,7 @@ export function ConversationScreen({
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
       <View className="flex-1" style={{ paddingBottom: keyboardHeight }}>
-        <AppHeader onMenu={() => openMenu('pipe0')} />
+        <AppHeader />
         <View className="flex-row items-center justify-between px-3 pb-2">
           <Pressable
             className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
@@ -434,6 +503,7 @@ export function ConversationScreen({
             <StatusBanner title={t('conversation.speechTitle')} message={speechNotice} />
           </View>
         ) : null}
+        <UsageExhaustedBanner />
         {request.errorMessage || recorder.errorMessage ? (
           <View className="px-3">
             <ErrorState
@@ -482,7 +552,11 @@ export function ConversationScreen({
         ) : null}
         {busy ? (
           <Typography className="px-3 py-1 text-center text-muted" accessibilityLiveRegion="polite">
-            {t('voice.thinking')}
+            {activeStage === 'transcribing'
+              ? t('voice.stageTranscribing')
+              : activeStage === 'reasoning'
+                ? t('voice.stageReasoning')
+                : t('voice.preparingAnswer')}
           </Typography>
         ) : null}
 

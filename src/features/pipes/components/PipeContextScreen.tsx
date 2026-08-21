@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import { getPipeConfig } from '@/application/navigation/pipes/pipe.config';
 import type { PipeId } from '@/application/navigation/pipes/pipe.types';
-import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { BottomTabBar } from '@/shared/components/BottomTabBar/BottomTabBar';
@@ -14,12 +13,11 @@ import { colors } from '@/theme/tokens';
 
 export function PipeContextScreen({ pipe }: { pipe: Exclude<PipeId, 'pipe0'> }) {
   const { t } = useTranslation();
-  const { openMenu } = usePipeNavigation();
   const config = getPipeConfig(pipe);
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader onMenu={() => openMenu(pipe)} />
+      <AppHeader />
       <View className="flex-1 px-4 pt-4">
         <Typography variant="title">{t(config.labelKey)}</Typography>
         <Typography variant="caption" className="mt-1 leading-5">

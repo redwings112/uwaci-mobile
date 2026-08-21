@@ -4,7 +4,7 @@ import { Platform, Pressable, Share, Text, useColorScheme, View } from 'react-na
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import * as Clipboard from 'expo-clipboard';
 
-import { getLanguage } from '@/core/constants/languages';
+import { getLanguage, isUwaciLanguage } from '@/core/constants/languages';
 import { logger } from '@/core/logging/logger';
 import { isAnswerSaved, toggleSavedAnswer } from '@/features/library/storage/libraryStorage';
 import { speechService } from '@/core/speech/speechService';
@@ -135,10 +135,15 @@ export function AssistantMessage({
     }
     setElapsedSeconds(0);
     setSpeechNotice(null);
+    const answerLanguage = isUwaciLanguage(message.language?.primary)
+      ? message.language.primary
+      : isUwaciLanguage(message.language?.preferred)
+        ? message.language.preferred
+        : language;
     await speechService.speak(
       message.content,
       {
-        language: getLanguage(language).speechLocale,
+        language: getLanguage(answerLanguage).speechLocale,
         rate,
         onNaturalError: (error) => setSpeechNotice(error.message),
       },

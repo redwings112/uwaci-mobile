@@ -4,7 +4,9 @@ const SPEECH_LEVEL = 0.3;
 const SILENCE_LEVEL = 0.22;
 const MIN_SPEECH_MILLIS = 350;
 
-const SILENCE_TO_SUBMIT_MILLIS = 650;
+// Short hesitations inside a sentence regularly last 400-600 ms. Waiting for
+// 800 ms keeps hands-free turns responsive without cutting off natural speech.
+const SILENCE_TO_SUBMIT_MILLIS = 800;
 
 interface SilenceAutoSubmitOptions {
   recording: boolean;

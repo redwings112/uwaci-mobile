@@ -68,7 +68,7 @@ describe('UsageScreen', () => {
   it.each([
     ['approaching_limit', 'Credits are running low'],
     ['exhausted', 'Monthly credits used'],
-    ['configuration_required', 'Usage is temporarily unavailable'],
+    ['configuration_required', 'Free credits are being configured'],
   ] as const)('shows the %s state in text', (status, title) => {
     mockUsage.mockReturnValue({
       data: usage(status),
@@ -79,5 +79,29 @@ describe('UsageScreen', () => {
     } as never);
 
     expect(render(<UsageScreen />).getByText(title)).toBeTruthy();
+  });
+
+  it('does not present zero balances as real usage when policy configuration is missing', () => {
+    mockUsage.mockReturnValue({
+      data: {
+        ...usage('configuration_required'),
+        period: { starts_at: null, ends_at: null },
+        credits: {
+          allocated: '0',
+          used: '0',
+          reserved: '0',
+          remaining: '0',
+          percentage_used: '0',
+        },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: undefined,
+      refetch: jest.fn(),
+    } as never);
+
+    const screen = render(<UsageScreen />);
+    expect(screen.queryByText('0 of 0 used')).toBeNull();
+    expect(screen.queryByLabelText('Monthly credit usage')).toBeNull();
   });
 });

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
-import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,7 +28,6 @@ const followUps: readonly { label: string; icon: AppIconName }[] = [
 
 export function AnswerScreen() {
   const router = useRouter();
-  const { openMenu } = usePipeNavigation();
   const { t } = useTranslation();
   const messages = useAppSelector(selectConversationMessages);
   const conversationId = useAppSelector(selectActiveConversationId);
@@ -65,7 +63,7 @@ export function AnswerScreen() {
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <AppHeader onMenu={() => openMenu('pipe0')} />
+        <AppHeader />
         <ScrollView
           className="flex-1"
           contentContainerClassName="px-4 pb-5"

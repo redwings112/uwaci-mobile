@@ -28,7 +28,12 @@ export interface PreparedNaturalSpeech {
 
 type NaturalSpeechPreparation = PreparedNaturalSpeech | NaturalPlaybackResult;
 
-let capabilityPromise: Promise<boolean> | null = null;
+interface CapabilityRequest {
+  accessToken: string | null;
+  promise: Promise<boolean>;
+}
+
+let capabilityRequest: CapabilityRequest | null = null;
 let activeStop: (() => void) | null = null;
 const pendingGenerationControllers = new Set<AbortController>();
 
@@ -38,10 +43,17 @@ async function authorizationHeaders(): Promise<Record<string, string>> {
 }
 
 async function naturalVoiceAvailable(): Promise<boolean> {
-  capabilityPromise ??= (async () => {
+  // Home prewarms this before the user has necessarily restored a session. Do
+  // not let that unauthenticated 401 suppress natural speech after sign-in.
+  const accessToken = await getAccessToken();
+  if (capabilityRequest?.accessToken === accessToken) return capabilityRequest.promise;
+  const request = (async () => {
     try {
       const response = await fetch(`${appConfig.apiBaseUrl}/api/v1/voice/capabilities`, {
-        headers: { Accept: 'application/json', ...(await authorizationHeaders()) },
+        headers: {
+          Accept: 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
       });
       if (!response.ok) return false;
       const payload = (await response.json()) as CapabilitiesEnvelope;
@@ -50,7 +62,10 @@ async function naturalVoiceAvailable(): Promise<boolean> {
       return false;
     }
   })();
-  return capabilityPromise;
+  capabilityRequest = { accessToken, promise: request };
+  const available = await request;
+  if (!available && capabilityRequest?.promise === request) capabilityRequest = null;
+  return available;
 }
 
 function languageCode(locale?: string): string {
@@ -93,7 +108,7 @@ async function createPreparedSpeech(
       signal: controller.signal,
     });
     if (!response.ok) {
-      if (response.status === 429 || response.status >= 500) capabilityPromise = null;
+      if (response.status === 429 || response.status >= 500) capabilityRequest = null;
       return playbackError(response);
     }
     store.dispatch(baseApi.util.invalidateTags(['Usage']));
@@ -128,31 +143,36 @@ async function createPreparedSpeech(
     };
 
     return {
-      play: () => {
+      play: async () => {
         if (discarded) return Promise.resolve('stopped');
-        return new Promise<NaturalPlaybackResult>((resolve) => {
-          const player = createAudioPlayer(uri, { updateInterval: 80 });
-          let settled = false;
-          const finish = (result: NaturalPlaybackResult) => {
-            if (settled) return;
-            settled = true;
-            subscription.remove();
-            player.pause();
-            player.release();
-            cleanup();
-            stopPlayback = null;
-            if (activeStop === stop) activeStop = null;
-            resolve(result);
-          };
-          const stop = () => finish('stopped');
-          const subscription = player.addListener('playbackStatusUpdate', (status) => {
-            if (status.didJustFinish) finish('done');
-            else if (status.error) finish('error');
+        try {
+          return await new Promise<NaturalPlaybackResult>((resolve) => {
+            const player = createAudioPlayer(uri, { updateInterval: 80 });
+            let settled = false;
+            const finish = (result: NaturalPlaybackResult) => {
+              if (settled) return;
+              settled = true;
+              subscription.remove();
+              player.pause();
+              player.release();
+              cleanup();
+              stopPlayback = null;
+              if (activeStop === stop) activeStop = null;
+              resolve(result);
+            };
+            const stop = () => finish('stopped');
+            const subscription = player.addListener('playbackStatusUpdate', (status) => {
+              if (status.didJustFinish) finish('done');
+              else if (status.error) finish('error');
+            });
+            stopPlayback = stop;
+            activeStop = stop;
+            player.play();
           });
-          stopPlayback = stop;
-          activeStop = stop;
-          player.play();
-        });
+        } catch {
+          cleanup();
+          return 'error';
+        }
       },
       discard: () => {
         if (discarded) return;
@@ -195,6 +215,6 @@ export const naturalSpeechService = {
   },
 
   resetCapabilityCache(): void {
-    capabilityPromise = null;
+    capabilityRequest = null;
   },
 };

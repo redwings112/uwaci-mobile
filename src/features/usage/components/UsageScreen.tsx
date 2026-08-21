@@ -96,48 +96,54 @@ export function UsageScreen() {
                 </Typography>
               </View>
               <View className="rounded-full border border-brand/30 bg-lavender px-3 py-1">
-                <Text className="text-xs font-semibold text-brand">{t('usage.active')}</Text>
+                <Text className="text-xs font-semibold text-brand">
+                  {query.data.status === 'configuration_required'
+                    ? t('usage.configurationBadge')
+                    : t('usage.active')}
+                </Text>
               </View>
             </View>
             <Typography className="mt-4 text-muted">{t('usage.futurePlans')}</Typography>
           </SurfaceCard>
 
-          <SurfaceCard className="mt-4 p-5">
-            <Typography variant="label">{t('usage.creditsTitle')}</Typography>
-            <View className="mt-4 flex-row items-end justify-between">
-              <View>
-                <Text
-                  className="text-3xl font-bold text-ink dark:text-white"
-                  accessibilityLabel={t('usage.remainingA11y', {
-                    remaining: displayCredits(query.data.credits.remaining),
+          {query.data.status !== 'configuration_required' ? (
+            <SurfaceCard className="mt-4 p-5">
+              <Typography variant="label">{t('usage.creditsTitle')}</Typography>
+              <View className="mt-4 flex-row items-end justify-between">
+                <View>
+                  <Text
+                    className="text-3xl font-bold text-ink dark:text-white"
+                    accessibilityLabel={t('usage.remainingA11y', {
+                      remaining: displayCredits(query.data.credits.remaining),
+                    })}
+                  >
+                    {displayCredits(query.data.credits.remaining)}
+                  </Text>
+                  <Typography variant="caption">{t('usage.creditsRemaining')}</Typography>
+                </View>
+                <Typography variant="caption">
+                  {t('usage.usedOfTotal', {
+                    used: displayCredits(query.data.credits.used),
+                    total: displayCredits(query.data.credits.allocated),
                   })}
-                >
-                  {displayCredits(query.data.credits.remaining)}
-                </Text>
-                <Typography variant="caption">{t('usage.creditsRemaining')}</Typography>
+                </Typography>
               </View>
-              <Typography variant="caption">
-                {t('usage.usedOfTotal', {
-                  used: displayCredits(query.data.credits.used),
-                  total: displayCredits(query.data.credits.allocated),
-                })}
-              </Typography>
-            </View>
-            <View
-              className="mt-4 h-3 overflow-hidden rounded-full bg-border"
-              accessibilityRole="progressbar"
-              accessibilityLabel={t('usage.progressA11y')}
-              accessibilityValue={{ min: 0, max: 100, now: Math.round(percentage) }}
-            >
               <View
-                className={`h-full rounded-full ${query.data.status === 'exhausted' ? 'bg-danger' : query.data.status === 'approaching_limit' ? 'bg-accent' : 'bg-brand'}`}
-                style={{ width: `${percentage}%` }}
-              />
-            </View>
-            <Typography variant="caption" className="mt-2 text-right">
-              {t('usage.percentageUsed', { percentage: percentage.toFixed(0) })}
-            </Typography>
-          </SurfaceCard>
+                className="mt-4 h-3 overflow-hidden rounded-full bg-border"
+                accessibilityRole="progressbar"
+                accessibilityLabel={t('usage.progressA11y')}
+                accessibilityValue={{ min: 0, max: 100, now: Math.round(percentage) }}
+              >
+                <View
+                  className={`h-full rounded-full ${query.data.status === 'exhausted' ? 'bg-danger' : query.data.status === 'approaching_limit' ? 'bg-accent' : 'bg-brand'}`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </View>
+              <Typography variant="caption" className="mt-2 text-right">
+                {t('usage.percentageUsed', { percentage: percentage.toFixed(0) })}
+              </Typography>
+            </SurfaceCard>
+          ) : null}
 
           {statusMessage ? (
             <View className="mt-4">
@@ -155,19 +161,23 @@ export function UsageScreen() {
             </View>
           ) : null}
 
-          <SurfaceCard className="mt-4 p-5">
-            <Typography variant="label">{t('usage.periodTitle')}</Typography>
-            <View className="mt-3 flex-row justify-between gap-4">
-              <View className="flex-1">
-                <Typography variant="caption">{t('usage.periodStart')}</Typography>
-                <Typography className="mt-1">{displayDate(query.data.period.starts_at)}</Typography>
+          {query.data.status !== 'configuration_required' ? (
+            <SurfaceCard className="mt-4 p-5">
+              <Typography variant="label">{t('usage.periodTitle')}</Typography>
+              <View className="mt-3 flex-row justify-between gap-4">
+                <View className="flex-1">
+                  <Typography variant="caption">{t('usage.periodStart')}</Typography>
+                  <Typography className="mt-1">
+                    {displayDate(query.data.period.starts_at)}
+                  </Typography>
+                </View>
+                <View className="flex-1">
+                  <Typography variant="caption">{t('usage.resetDate')}</Typography>
+                  <Typography className="mt-1">{displayDate(query.data.period.ends_at)}</Typography>
+                </View>
               </View>
-              <View className="flex-1">
-                <Typography variant="caption">{t('usage.resetDate')}</Typography>
-                <Typography className="mt-1">{displayDate(query.data.period.ends_at)}</Typography>
-              </View>
-            </View>
-          </SurfaceCard>
+            </SurfaceCard>
+          ) : null}
         </>
       )}
 

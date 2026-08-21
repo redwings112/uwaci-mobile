@@ -90,7 +90,10 @@ export function mapApiQueryResult(result: ApiQueryResult): QueryResult {
     userMessage.transcription = { confidence: result.transcription.confidence };
   }
   const assistantMessage = mapApiMessage(result.assistant_message);
-  assistantMessage.language = { preferred: result.language.preferred_language };
+  assistantMessage.language = {
+    preferred: result.language.preferred_language,
+    primary: result.assistant_message.primary_language,
+  };
   return {
     ...(result.correlation_id ? { correlationId: result.correlation_id } : {}),
     conversationId: result.conversation_id,

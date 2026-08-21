@@ -129,54 +129,12 @@ export const speechService = {
     return snapshot;
   },
   async speak(text: string, options: SpeakOptions = {}, messageId?: string): Promise<void> {
-    activeStreamCancel?.();
-    activeStreamCancel = null;
-    await Speech.stop();
-    naturalSpeechService.stop();
-    const spokenText = prepareTextForSpeech(text, options.language);
-    if (!spokenText) {
-      updatePlayback('idle');
-      options.onDone?.();
-      return;
-    }
-    updatePlayback('speaking', messageId ?? null);
-    const naturalResult = await naturalSpeechService.play(spokenText, options.language);
-    if (naturalResult === 'done') {
-      updatePlayback('idle');
-      options.onDone?.();
-      return;
-    }
-    if (naturalResult === 'stopped') {
-      updatePlayback('idle');
-      options.onStopped?.();
-      return;
-    }
-    if (isNaturalUsageFailure(naturalResult)) reportNaturalUsageFailure(naturalResult, options);
-    const nativeVoice = await resolveNativeVoice(options.language);
-    if (!nativeVoice.available) {
-      updatePlayback('idle');
-      options.onError?.();
-      options.onUnavailable?.();
-      return;
-    }
-    Speech.speak(spokenText, {
-      ...nativeVoice.options,
-      rate: options.rate ?? 0.96,
-      pitch: options.pitch ?? 1.02,
-      onDone: () => {
-        updatePlayback('idle');
-        options.onDone?.();
-      },
-      onStopped: () => {
-        updatePlayback('idle');
-        options.onStopped?.();
-      },
-      onError: () => {
-        updatePlayback('idle');
-        options.onError?.();
-        options.onUnavailable?.();
-      },
-    });
+    // A speaker tap has the same latency requirement as a live voice turn.
+    // Route it through the sentence queue instead of making one TTS request for
+    // the entire answer, which can hold playback until every paragraph is ready.
+    const session = await this.createStream(options, messageId);
+    session.enqueue(text);
+    session.finish();
   },
   async createStream(options: SpeakOptions = {}, messageId?: string): Promise<SpeechStreamSession> {
     activeStreamCancel?.();
@@ -290,30 +248,37 @@ export const speechService = {
       });
     };
     const drainSentences = () => {
-      const boundary = /[.!?。！？](?:["'”’)]*)\s+/g;
-      let lastBoundary = 0;
-      for (const match of buffer.matchAll(boundary)) {
-        lastBoundary = (match.index ?? 0) + match[0].length;
-      }
-      if (lastBoundary > 0) {
-        queueChunk(buffer.slice(0, lastBoundary));
-        buffer = buffer.slice(lastBoundary);
-      } else {
+      // Release the *first* complete sentence immediately. The previous
+      // last-boundary strategy merged every sentence already in the buffer into
+      // one TTS request, so tapping play on a full answer waited for full-answer
+      // synthesis before any audio could begin.
+      while (true) {
+        const boundary = /[.!?。！？](?:["'”’)]*)(?:\s+|$)/.exec(buffer);
+        if (boundary) {
+          const end = (boundary.index ?? 0) + boundary[0].length;
+          queueChunk(buffer.slice(0, end));
+          buffer = buffer.slice(end);
+          continue;
+        }
         const clauseMatches = [...buffer.matchAll(/[,;:]\s+/g)];
         const clauseBoundary = clauseMatches.at(-1);
         const clauseEnd = clauseBoundary
           ? (clauseBoundary.index ?? 0) + clauseBoundary[0].length
           : 0;
-        if (clauseEnd >= 64) {
+        if (clauseEnd >= 48) {
           queueChunk(buffer.slice(0, clauseEnd));
           buffer = buffer.slice(clauseEnd);
-        } else if (buffer.length > 170) {
-          const splitAt = buffer.lastIndexOf(' ', 150);
-          if (splitAt > 72) {
+          continue;
+        }
+        if (buffer.length > 96) {
+          const splitAt = buffer.lastIndexOf(' ', 84);
+          if (splitAt > 48) {
             queueChunk(buffer.slice(0, splitAt + 1));
             buffer = buffer.slice(splitAt + 1);
+            continue;
           }
         }
+        return;
       }
     };
     const cancel = async () => {

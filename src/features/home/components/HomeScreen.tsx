@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { ensureAuthSession } from '@/core/auth/authSession';
-import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { getLanguage } from '@/core/constants/languages';
 import { mapApiError } from '@/core/errors/mapApiError';
 import { speechService, type SpeechStreamSession } from '@/core/speech/speechService';
@@ -28,6 +27,7 @@ import {
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
 import { selectPreferredLanguage } from '@/features/language/state/selectors';
+import { UsageExhaustedBanner } from '@/features/usage/components/UsageExhaustedBanner';
 import { LiveTranscriptionCard } from '@/features/voice/components/LiveTranscriptionCard';
 import { VoiceActionRow } from '@/features/voice/components/VoiceActionRow';
 import { VoiceOrb } from '@/features/voice/components/VoiceOrb';
@@ -43,7 +43,6 @@ import {
   voiceThinkingReset,
   voiceThinkingStarted,
 } from '@/features/voice/state/voiceSlice';
-import { getThinkingPrompt } from '@/features/voice/voicePrompts';
 import { HANDS_FREE_RESUME_DELAY_MS, shouldResumeListening } from '@/features/voice/handsFree';
 import { registerVoiceTurnCanceller } from '@/features/voice/voiceTurnControl';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
@@ -69,7 +68,6 @@ const busyStatuses = [
 
 export function HomeScreen({ startRecording = false, conversationId }: HomeScreenProps) {
   const router = useRouter();
-  const { openMenu } = usePipeNavigation();
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
@@ -77,7 +75,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const activeConversationId = useAppSelector(selectActiveConversationId);
   const requestError = useAppSelector((state) => state.conversation.errorMessage);
   const reduceMotion = useAppSelector((state) => state.settings.reduceMotion);
-  const thinking = useAppSelector((state) => state.voice.thinking);
+  const activeStage = useAppSelector((state) => state.voice.thinking.activeStage);
   const recorder = useVoiceRecorder();
   const voiceQuery = useVoiceQuery();
   const playback = useSpeechPlayback();
@@ -88,7 +86,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const initialActionHandled = useRef(false);
   const mounted = useRef(true);
   const voiceActionInProgress = useRef(false);
-  const thinkingVisible = useRef(false);
   const turnCancelled = useRef(false);
   const completingVoiceTurn = useRef(false);
   const streamSession = useRef<SpeechStreamSession | null>(null);
@@ -130,16 +127,9 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     if (remoteConversation.data) dispatch(conversationLoaded(remoteConversation.data.messages));
   }, [dispatch, remoteConversation.data]);
 
-  const leaveThinking = useCallback(() => {
-    if (!thinkingVisible.current) return;
-    thinkingVisible.current = false;
-    if (router.canGoBack()) router.back();
-  }, [router]);
-
   const abortVoiceQuery = voiceQuery.abort;
   const cancelVoiceTurn = useCallback(() => {
     turnCancelled.current = true;
-    thinkingVisible.current = false;
     if (resumeTimer.current) {
       clearTimeout(resumeTimer.current);
       resumeTimer.current = null;
@@ -238,8 +228,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       turnCancelled.current = false;
       dispatch(requestStarted());
       dispatch(voiceThinkingReset());
-      dispatch(voiceThinkingStarted('transcribing'));
-      thinkingVisible.current = false;
       const speechReady = speechService
         .createStream(
           {
@@ -279,7 +267,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
             if (firstDelta) {
               firstDelta = false;
               dispatch(voiceStatusChanged('speaking'));
-              leaveThinking();
             }
             if (streamSession.current) streamSession.current.enqueue(text);
             else pendingSpeech.push(text);
@@ -299,17 +286,15 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       if (turnCancelled.current) await session.cancel();
       else {
         if (firstDelta) {
-          leaveThinking();
-          dispatch(voiceStatusChanged('speaking'));
           session.enqueue(result.assistantMessage.content);
         }
+        dispatch(voiceStatusChanged('speaking'));
         session.finish();
       }
     } catch (error: unknown) {
       if (!mounted.current) return;
       void streamSession.current?.cancel();
       streamSession.current = null;
-      leaveThinking();
       setConversationLoop(false);
       dispatch(requestFailed(mapApiError(error).message));
     } finally {
@@ -385,21 +370,27 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
 
   const statusTitle = listening
     ? t('voice.listeningTitle')
-    : busy
-      ? thinking.activeStage
-        ? getThinkingPrompt(language, thinking.activeStage)
-        : t('voice.preparingAnswer')
-      : speaking
-        ? t('voice.speaking')
+    : speaking
+      ? t('voice.speaking')
+      : busy
+        ? activeStage === 'transcribing'
+          ? t('voice.stageTranscribing')
+          : activeStage === 'reasoning'
+            ? t('voice.stageReasoning')
+            : t('voice.preparingAnswer')
         : messages.length
           ? t('voice.readyNext')
           : t('voice.talkNaturally');
   const statusCaption = listening
     ? t('voice.listeningCaption')
-    : busy
-      ? t('voice.thinkingCaption')
-      : speaking
-        ? t('voice.speakingCaption')
+    : speaking
+      ? t('voice.speakingCaption')
+      : busy
+        ? activeStage === 'transcribing'
+          ? t('voice.transcribingCaption')
+          : activeStage === 'reasoning'
+            ? t('voice.reasoningCaption')
+            : t('voice.thinkingCaption')
         : t('voice.idleCaption');
 
   return (
@@ -408,7 +399,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         actionIcon="messageSquare"
         actionLabel={t('voice.newConversation')}
         onAction={() => void startNewVoiceConversation()}
-        onMenu={() => openMenu('pipe0')}
       />
       <ScrollView
         className="flex-1"
@@ -450,7 +440,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         <View className="items-center pt-2">
           <VoiceOrb
             audioLevel={recorder.audioLevel}
-            disabled={voiceQuery.isLoading}
+            disabled={voiceQuery.isLoading && !speaking}
             reduceMotion={reduceMotion}
             status={listening && !recording ? 'recording' : recorder.status}
             onPress={() => void handleOrbPress()}
@@ -470,6 +460,8 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
             </Text>
           </SurfaceCard>
         ) : null}
+
+        <UsageExhaustedBanner />
 
         {listening || liveTranscript ? (
           <View className="mt-4">

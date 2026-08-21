@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { usePipeNavigation } from '@/application/navigation/pipes/usePipeNavigation';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +37,6 @@ function timeLabel(value: string): string {
 
 export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
   const router = useRouter();
-  const { openMenu } = usePipeNavigation();
   const { t } = useTranslation();
   const auth = useAppSelector((state) => state.auth);
   const userId = auth.userId;
@@ -124,7 +122,7 @@ export function LibraryPlaceholderScreen({ tab }: { tab: LibraryTab }) {
   const title = t(`library.${tab}`);
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader onMenu={() => openMenu('pipe0')} />
+      <AppHeader />
       <View className="px-4 pb-3 pt-1">
         <Typography variant="title">{title}</Typography>
         <Typography variant="caption" className="mt-1">

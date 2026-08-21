@@ -15,12 +15,15 @@ describe('silence auto-submit', () => {
       { initialProps: { audioLevel: 0.5, durationMillis: 800 } },
     );
 
-    now = 2_000;
+    now = 1_300;
     rerender({ audioLevel: 0.1, durationMillis: 1_800 });
     expect(onSilence).not.toHaveBeenCalled();
 
-    now = 2_700;
+    now = 1_650;
     rerender({ audioLevel: 0.1, durationMillis: 2_500 });
+    expect(onSilence).not.toHaveBeenCalled();
+
+    now = 1_850;
     rerender({ audioLevel: 0.1, durationMillis: 2_600 });
     expect(onSilence).toHaveBeenCalledTimes(1);
   });
