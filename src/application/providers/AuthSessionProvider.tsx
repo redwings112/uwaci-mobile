@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 
+import { getAuthClient } from '@/core/auth/authClient';
 import { initializeAuthSession, observeAuthSession } from '@/core/auth/authSession';
 import { mapApiError } from '@/core/errors/mapApiError';
 import { sessionFailed, sessionResolved } from '@/features/authentication/state/authSlice';
@@ -11,6 +13,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let active = true;
+    const client = getAuthClient();
+    const syncTokenRefresh = (state: string) => {
+      if (!client) return;
+      if (state === 'active') client.auth.startAutoRefresh();
+      else client.auth.stopAutoRefresh();
+    };
+    syncTokenRefresh(AppState.currentState);
+    const appStateSubscription = AppState.addEventListener('change', syncTokenRefresh);
     const stopObserving = observeAuthSession((session) => {
       if (active) dispatch(sessionResolved({ userId: session?.userId ?? null }));
     });
@@ -23,6 +33,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       });
     return () => {
       active = false;
+      appStateSubscription.remove();
+      client?.auth.stopAutoRefresh();
       stopObserving();
     };
   }, [dispatch]);

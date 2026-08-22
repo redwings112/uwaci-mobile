@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthClient } from '@/core/auth/authClient';
+import { mapAuthenticationError } from '@/core/errors/mapAuthenticationError';
 import { secureStorage } from '@/core/storage/secureStorage';
 import { STORAGE_KEYS } from '@/core/storage/storageKeys';
 import { AppHeader } from '@/shared/components/AppHeader/AppHeader';
@@ -49,7 +50,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
         ? await client.auth.signUp({ email: email.trim(), password })
         : await client.auth.signInWithPassword({ email: email.trim(), password });
       if (result.error) {
-        setMessage(result.error.message);
+        setMessage(mapAuthenticationError(result.error));
         return;
       }
       if (signUp && !result.data.session) {

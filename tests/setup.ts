@@ -11,8 +11,10 @@ jest.mock('expo-audio', () => ({
   createAudioPlayer: jest.fn(() => ({
     play: jest.fn(),
     pause: jest.fn(),
-    release: jest.fn(),
+    remove: jest.fn(),
   })),
+  setAudioModeAsync: jest.fn(async () => undefined),
+  setIsAudioActiveAsync: jest.fn(async () => undefined),
 }));
 
 jest.mock('react-i18next', () => {

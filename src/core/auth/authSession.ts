@@ -53,7 +53,9 @@ export async function getAccessToken(): Promise<string | null> {
   }
   const stored = await getAuthSession();
   if (stored?.expiresAt && stored.expiresAt <= Math.floor(Date.now() / 1000)) {
-    await clearAuthSession();
+    // Keep the refresh token until Supabase has had a chance to refresh it when
+    // connectivity returns. Removing it here turns a temporary offline resume
+    // into an unexpected logout.
     return null;
   }
   return stored?.accessToken ?? null;
@@ -61,23 +63,40 @@ export async function getAccessToken(): Promise<string | null> {
 
 export async function initializeAuthSession(): Promise<AuthSession | null> {
   const client = getAuthClient();
-  if (!client) {
-    await clearAuthSession();
-    return null;
-  }
+  if (!client) return getAuthSession();
   const current = await client.auth.getSession();
+  if (!current.error && current.data.session) {
+    const normalized = fromSupabaseSession(current.data.session);
+    await saveAuthSession(normalized);
+    return normalized;
+  }
+
+  const stored = await getAuthSession();
+  if (stored?.refreshToken) {
+    // Keep the durable copy in sync with Supabase's own storage. This repairs a
+    // partially restored native session and lets the refresh token renew an
+    // expired access token after the app comes back to the foreground.
+    const restored = await client.auth.setSession({
+      access_token: stored.accessToken,
+      refresh_token: stored.refreshToken,
+    });
+    if (!restored.error && restored.data.session) {
+      const normalized = fromSupabaseSession(restored.data.session);
+      await saveAuthSession(normalized);
+      return normalized;
+    }
+    // A timeout or an offline device must not erase a valid saved account.
+    return stored;
+  }
+  if (stored) return stored;
   if (current.error) {
-    await clearAuthSession();
     throw new AppError(
       'AUTHENTICATION_REQUIRED',
       'Uwaci could not restore a secure session. Please try again.',
       true,
     );
   }
-  if (!current.data.session) return null;
-  const normalized = fromSupabaseSession(current.data.session);
-  await saveAuthSession(normalized);
-  return normalized;
+  return null;
 }
 
 /**
@@ -115,9 +134,15 @@ export async function ensureAuthSession(): Promise<AuthSession> {
 export function observeAuthSession(listener: (session: AuthSession | null) => void): () => void {
   const client = getAuthClient();
   if (!client) return () => undefined;
-  const { data } = client.auth.onAuthStateChange((_event, session) => {
+  const { data } = client.auth.onAuthStateChange((event, session) => {
     if (!session) {
-      void clearAuthSession().then(() => listener(null));
+      if (event === 'SIGNED_OUT') {
+        void clearAuthSession().then(() => listener(null));
+      } else {
+        // INITIAL_SESSION can be null while SecureStore restores on native.
+        // Preserve the account until Supabase explicitly signs it out.
+        void getAuthSession().then(listener);
+      }
       return;
     }
     const normalized = fromSupabaseSession(session);

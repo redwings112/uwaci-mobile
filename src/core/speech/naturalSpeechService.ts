@@ -1,4 +1,4 @@
-import { createAudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
@@ -153,7 +153,7 @@ async function createPreparedSpeech(
         if (discarded) return Promise.resolve('stopped');
         try {
           return await new Promise<NaturalPlaybackResult>((resolve) => {
-            const player = createAudioPlayer(uri, { updateInterval: 80 });
+            let player: ReturnType<typeof createAudioPlayer> | null = null;
             let settled = false;
             let playRequested = false;
             let playbackStarted = false;
@@ -164,8 +164,8 @@ async function createPreparedSpeech(
               settled = true;
               if (startupTimer) clearTimeout(startupTimer);
               subscription.remove();
-              player.pause();
-              player.release();
+              player?.pause();
+              player?.remove();
               cleanup();
               stopPlayback = null;
               if (activeStop === stop) activeStop = null;
@@ -174,30 +174,46 @@ async function createPreparedSpeech(
             const stop = () => finish('stopped');
             const startPlayback = () => {
               if (playRequested || settled) return;
+              if (!player) return;
               playRequested = true;
+              player.volume = 1;
+              player.muted = false;
               player.play();
             };
-            subscription = player.addListener('playbackStatusUpdate', (status) => {
-              if (status.didJustFinish) finish('done');
-              else if (status.error) {
-                logger.warn('Natural speech player reported an error', {
-                  language: languageCode(language),
-                });
-                finish('error');
-              } else {
-                if (status.isLoaded) startPlayback();
-                if (status.playing) {
-                  if (!playbackStarted) {
-                    playbackStarted = true;
-                    onStarted?.();
-                  }
-                  if (startupTimer) {
-                    clearTimeout(startupTimer);
-                    startupTimer = undefined;
+            const configureAndCreatePlayer = async () => {
+              await setIsAudioActiveAsync(true);
+              await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                interruptionMode: 'doNotMix',
+                shouldRouteThroughEarpiece: false,
+              });
+              if (settled) return;
+              player = createAudioPlayer(uri, { updateInterval: 80, downloadFirst: true });
+              subscription = player.addListener('playbackStatusUpdate', (status) => {
+                if (status.didJustFinish) finish('done');
+                else if (status.error) {
+                  logger.warn('Natural speech player reported an error', {
+                    error: status.error,
+                    language: languageCode(language),
+                  });
+                  finish('error');
+                } else {
+                  if (status.isLoaded) startPlayback();
+                  if (status.playing) {
+                    if (!playbackStarted) {
+                      playbackStarted = true;
+                      onStarted?.();
+                    }
+                    if (startupTimer) {
+                      clearTimeout(startupTimer);
+                      startupTimer = undefined;
+                    }
                   }
                 }
-              }
-            });
+              });
+              if (player.currentStatus.isLoaded) startPlayback();
+            };
             stopPlayback = stop;
             activeStop = stop;
             startupTimer = setTimeout(() => {
@@ -207,7 +223,13 @@ async function createPreparedSpeech(
               });
               finish('error');
             }, PLAYBACK_START_TIMEOUT_MS);
-            if (player.currentStatus.isLoaded) startPlayback();
+            void configureAndCreatePlayer().catch((error: unknown) => {
+              logger.warn('Natural speech audio session could not be configured', {
+                error: error instanceof Error ? error.name : 'unknown',
+                language: languageCode(language),
+              });
+              finish('error');
+            });
           });
         } catch (error: unknown) {
           logger.warn('Natural speech player could not be created', {

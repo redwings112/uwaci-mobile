@@ -1,6 +1,6 @@
 import { naturalSpeechService } from '@/core/speech/naturalSpeechService';
 import { getAccessToken } from '@/core/auth/authSession';
-import { createAudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync } from 'expo-audio';
 
 jest.mock('@/core/auth/authSession', () => ({ getAccessToken: jest.fn() }));
 jest.mock('expo-file-system', () => ({
@@ -109,7 +109,7 @@ describe('natural speech usage control', () => {
       currentStatus: { isLoaded: false },
       play: jest.fn(),
       pause: jest.fn(),
-      release: jest.fn(),
+      remove: jest.fn(),
       addListener: jest.fn(
         (_event: string, listener: (status: Record<string, unknown>) => void) => {
           playbackListener = listener;
@@ -140,12 +140,21 @@ describe('natural speech usage control', () => {
     expect(player.play).not.toHaveBeenCalled();
     playbackListener?.({ isLoaded: true, playing: false, didJustFinish: false });
     expect(player.play).toHaveBeenCalledTimes(1);
+    expect(setIsAudioActiveAsync).toHaveBeenCalledWith(true);
+    expect(setAudioModeAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowsRecording: false,
+        playsInSilentMode: true,
+        interruptionMode: 'doNotMix',
+        shouldRouteThroughEarpiece: false,
+      }),
+    );
     expect(onStarted).not.toHaveBeenCalled();
     playbackListener?.({ isLoaded: true, playing: true, didJustFinish: false });
     expect(onStarted).toHaveBeenCalledTimes(1);
     playbackListener?.({ isLoaded: true, playing: false, didJustFinish: true });
 
     await expect(playback).resolves.toBe('done');
-    expect(player.release).toHaveBeenCalledTimes(1);
+    expect(player.remove).toHaveBeenCalledTimes(1);
   });
 });

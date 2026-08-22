@@ -19,6 +19,7 @@ jest.mock('@/core/auth/authClient', () => ({ getAuthClient: jest.fn() }));
 interface AuthClientMock {
   auth: {
     getSession: jest.Mock;
+    setSession: jest.Mock;
     onAuthStateChange: jest.Mock;
     signInAnonymously: jest.Mock;
   };
@@ -47,6 +48,7 @@ function createClient(): AuthClientMock {
   const client: AuthClientMock = {
     auth: {
       getSession: jest.fn(),
+      setSession: jest.fn(),
       onAuthStateChange: jest.fn(),
       signInAnonymously: jest.fn(),
     },
@@ -120,21 +122,21 @@ describe('authentication session lifecycle', () => {
     await expect(getAccessToken()).resolves.toBe('stored-access');
   });
 
-  it('deletes an expired stored access token', async () => {
+  it('keeps an expired stored session for a later refresh', async () => {
     jest
       .mocked(SecureStore.getItemAsync)
       .mockResolvedValue(JSON.stringify({ ...storedSession, expiresAt: 1 }));
 
     await expect(getAccessToken()).resolves.toBeNull();
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(STORAGE_KEYS.authSession);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith(STORAGE_KEYS.authSession);
   });
 
-  it('clears local state when authentication is not configured', async () => {
+  it('leaves local state untouched when authentication is not configured', async () => {
     await expect(initializeAuthSession()).resolves.toBeNull();
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(STORAGE_KEYS.authSession);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith(STORAGE_KEYS.authSession);
   });
 
-  it('rejects a failed session restore after clearing local state', async () => {
+  it('rejects a failed session restore without deleting local state', async () => {
     const client = createClient();
     client.auth.getSession.mockResolvedValue({
       data: { session: null },
@@ -145,7 +147,7 @@ describe('authentication session lifecycle', () => {
       code: 'AUTHENTICATION_REQUIRED',
       retryable: true,
     });
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(STORAGE_KEYS.authSession);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith(STORAGE_KEYS.authSession);
   });
 
   it('normalizes and persists an existing Supabase session', async () => {
@@ -171,6 +173,22 @@ describe('authentication session lifecycle', () => {
 
     await expect(initializeAuthSession()).resolves.toBeNull();
     expect(client.auth.signInAnonymously).not.toHaveBeenCalled();
+  });
+
+  it('keeps a saved account while Supabase recovers from an offline restart', async () => {
+    const client = createClient();
+    client.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: new Error('network request failed'),
+    });
+    client.auth.setSession.mockResolvedValue({
+      data: { session: null },
+      error: new Error('network request failed'),
+    });
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(JSON.stringify(storedSession));
+
+    await expect(initializeAuthSession()).resolves.toEqual(storedSession);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith(STORAGE_KEYS.authSession);
   });
 
   it('starts and persists an anonymous session when a protected flow begins', async () => {

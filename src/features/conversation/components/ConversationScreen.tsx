@@ -302,9 +302,6 @@ export function ConversationScreen({
                 if (mounted.current) setSpeechNotice(t('conversation.speechUnavailable'));
                 dispatch(voiceStatusChanged('idle'));
               },
-              onNaturalError: (error) => {
-                if (mounted.current) setSpeechNotice(error.message);
-              },
             })
             .then((session) => {
               streamSession = session;

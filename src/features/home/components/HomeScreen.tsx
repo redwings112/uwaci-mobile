@@ -236,10 +236,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
             onDone: finishSpeaking,
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
-            onNaturalError: (error) => {
-              setConversationLoop(false);
-              dispatch(requestFailed(error.message));
-            },
           },
           `voice-stream-${Date.now()}`,
         )
