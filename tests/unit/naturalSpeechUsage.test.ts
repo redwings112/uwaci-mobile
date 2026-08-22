@@ -1,7 +1,18 @@
 import { naturalSpeechService } from '@/core/speech/naturalSpeechService';
 import { getAccessToken } from '@/core/auth/authSession';
+import { createAudioPlayer } from 'expo-audio';
 
 jest.mock('@/core/auth/authSession', () => ({ getAccessToken: jest.fn() }));
+jest.mock('expo-file-system', () => ({
+  Paths: { cache: 'file:///cache' },
+  File: jest.fn().mockImplementation((_directory: string, name: string) => ({
+    uri: `file:///cache/${name}`,
+    exists: true,
+    create: jest.fn(),
+    write: jest.fn(),
+    delete: jest.fn(),
+  })),
+}));
 
 const mockGetAccessToken = jest.mocked(getAccessToken);
 
@@ -90,5 +101,51 @@ describe('natural speech usage control', () => {
         headers: expect.objectContaining({ Authorization: 'Bearer access-token' }),
       }),
     );
+  });
+
+  it('waits for the ElevenLabs MP3 to load before starting native playback', async () => {
+    let playbackListener: ((status: Record<string, unknown>) => void) | undefined;
+    const player = {
+      currentStatus: { isLoaded: false },
+      play: jest.fn(),
+      pause: jest.fn(),
+      release: jest.fn(),
+      addListener: jest.fn(
+        (_event: string, listener: (status: Record<string, unknown>) => void) => {
+          playbackListener = listener;
+          return { remove: jest.fn() };
+        },
+      ),
+    };
+    jest.mocked(createAudioPlayer).mockReturnValueOnce(player as never);
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { natural_tts: true } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      }) as typeof fetch;
+
+    const prepared = await naturalSpeechService.prepare('ElevenLabs voice', 'en-US');
+    expect(typeof prepared).toBe('object');
+    if (typeof prepared !== 'object') throw new Error('Expected prepared ElevenLabs speech.');
+    const onStarted = jest.fn();
+    const playback = prepared.play(onStarted);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(player.play).not.toHaveBeenCalled();
+    playbackListener?.({ isLoaded: true, playing: false, didJustFinish: false });
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(onStarted).not.toHaveBeenCalled();
+    playbackListener?.({ isLoaded: true, playing: true, didJustFinish: false });
+    expect(onStarted).toHaveBeenCalledTimes(1);
+    playbackListener?.({ isLoaded: true, playing: false, didJustFinish: true });
+
+    await expect(playback).resolves.toBe('done');
+    expect(player.release).toHaveBeenCalledTimes(1);
   });
 });

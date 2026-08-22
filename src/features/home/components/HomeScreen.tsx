@@ -232,6 +232,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         .createStream(
           {
             language: getLanguage(language).speechLocale,
+            onStart: () => dispatch(voiceStatusChanged('speaking')),
             onDone: finishSpeaking,
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
@@ -266,7 +267,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
             if (turnCancelled.current) return;
             if (firstDelta) {
               firstDelta = false;
-              dispatch(voiceStatusChanged('speaking'));
             }
             if (streamSession.current) streamSession.current.enqueue(text);
             else pendingSpeech.push(text);
@@ -288,7 +288,6 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         if (firstDelta) {
           session.enqueue(result.assistantMessage.content);
         }
-        dispatch(voiceStatusChanged('speaking'));
         session.finish();
       }
     } catch (error: unknown) {

@@ -28,7 +28,7 @@ describe('ConversationComposer', () => {
       <ConversationComposer microphoneActive onMicrophone={onMicrophone} onSend={jest.fn()} />,
     );
 
-    fireEvent.press(screen.getByRole('button', { name: 'Stop recording and send' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Stop voice and send' }));
     expect(onMicrophone).toHaveBeenCalledTimes(1);
   });
 

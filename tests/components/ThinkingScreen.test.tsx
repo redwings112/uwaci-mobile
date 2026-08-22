@@ -20,7 +20,7 @@ describe('ThinkingScreen', () => {
   it('shows the measured backend pipeline stages', () => {
     const screen = renderScreen();
     expect(screen.getByText('Uwaci is thinking…')).toBeTruthy();
-    expect(screen.getByText('Understanding your recording')).toBeTruthy();
+    expect(screen.getByText('Understanding your voice')).toBeTruthy();
     expect(screen.getByText('Writing your answer')).toBeTruthy();
   });
 

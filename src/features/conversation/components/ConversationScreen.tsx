@@ -174,11 +174,11 @@ export function ConversationScreen({
       if (result.voiceAction?.type === 'language_changed')
         dispatch(preferredLanguageChanged(result.voiceAction.language));
       if (voiceResponsesEnabled && speakResponse) {
-        dispatch(voiceStatusChanged('speaking'));
         await speechService.speak(
           result.assistantMessage.content,
           {
             language: getLanguage(responseLanguage).speechLocale,
+            onStart: () => dispatch(voiceStatusChanged('speaking')),
             onDone: () => dispatch(voiceStatusChanged('idle')),
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onUnavailable: () => {
@@ -295,6 +295,7 @@ export function ConversationScreen({
         ? speechService
             .createStream({
               language: getLanguage(language).speechLocale,
+              onStart: () => dispatch(voiceStatusChanged('speaking')),
               onDone: () => dispatch(voiceStatusChanged('idle')),
               onStopped: () => dispatch(voiceStatusChanged('idle')),
               onError: () => {
@@ -333,7 +334,6 @@ export function ConversationScreen({
               if (!voiceResponsesEnabled) return;
               if (firstDelta) {
                 firstDelta = false;
-                dispatch(voiceStatusChanged('speaking'));
               }
               if (streamSession) streamSession.enqueue(text);
               else pendingSpeech.push(text);
@@ -347,7 +347,6 @@ export function ConversationScreen({
           if (firstDelta) {
             session.enqueue(result.assistantMessage.content);
           }
-          dispatch(voiceStatusChanged('speaking'));
           session.finish();
         }
       } catch (error: unknown) {

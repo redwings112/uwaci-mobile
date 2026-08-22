@@ -29,6 +29,16 @@ jest.mock('@/core/speech/naturalSpeechService', () => ({
   },
 }));
 
+async function flushMicrotasks(): Promise<void> {
+  for (let index = 0; index < 8; index += 1) await Promise.resolve();
+}
+
+async function flushSpeechWork(): Promise<void> {
+  await flushMicrotasks();
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await flushMicrotasks();
+}
+
 describe('device speech language selection', () => {
   it('uses an exact locale and falls back to a compatible base language', () => {
     const voices = [{ language: 'en-GB' }, { language: 'fr-FR' }];
@@ -91,6 +101,7 @@ describe('speech-ready answer text', () => {
 
   it('passes speech-ready text to the native speech engine', async () => {
     await speechService.speak('### About a Boy\n- A short history', { language: 'en-US' });
+    await flushSpeechWork();
 
     expect(Speech.speak).toHaveBeenCalledWith(
       'About a Boy. A short history.',
@@ -107,12 +118,13 @@ describe('speech-ready answer text', () => {
     const onUnavailable = jest.fn();
 
     await speechService.speak('Mbote, moninga.', { language: 'ln-CD', onUnavailable });
+    await flushSpeechWork();
 
     expect(Speech.speak).not.toHaveBeenCalled();
     expect(onUnavailable).toHaveBeenCalledTimes(1);
   });
 
-  it('reports exhausted natural-speech credits and falls back to the device voice', async () => {
+  it('reports exhausted natural-speech credits without replacing the selected voice', async () => {
     const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
     const onNaturalError = jest.fn();
     natural.isAvailable.mockResolvedValueOnce(true);
@@ -122,12 +134,12 @@ describe('speech-ready answer text', () => {
       language: 'en-US',
       onNaturalError,
     });
-    await Promise.resolve();
+    await flushSpeechWork();
 
     expect(onNaturalError).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'USAGE_LIMIT_EXCEEDED', retryable: false }),
     );
-    expect(Speech.speak).toHaveBeenCalled();
+    expect(Speech.speak).not.toHaveBeenCalled();
   });
 
   it('breaks a speaker-tapped answer into sentences instead of synthesizing the whole answer', async () => {
@@ -141,6 +153,7 @@ describe('speech-ready answer text', () => {
     await speechService.speak('First sentence is ready. Second sentence follows.', {
       language: 'en-US',
     });
+    await flushSpeechWork();
 
     expect(natural.prepare).toHaveBeenNthCalledWith(1, 'First sentence is ready.', 'en-US');
     expect(natural.prepare).toHaveBeenNthCalledWith(2, 'Second sentence follows.', 'en-US');
@@ -154,6 +167,7 @@ describe('speech-ready answer text', () => {
     const session = await speechService.createStream({ language: 'en-US' }, 'streamed-answer');
 
     session.enqueue('The first sentence is ready. ');
+    await flushSpeechWork();
     expect(Speech.speak).toHaveBeenCalledWith(
       'The first sentence is ready.',
       expect.objectContaining({ language: 'en-US', voice: 'enhanced-en' }),
@@ -162,6 +176,9 @@ describe('speech-ready answer text', () => {
     session.enqueue('The final sentence arrives later');
     expect(Speech.speak).toHaveBeenCalledTimes(1);
     session.finish();
+    const firstOptions = jest.mocked(Speech.speak).mock.calls[0]?.[1];
+    firstOptions?.onDone?.();
+    await flushSpeechWork();
     expect(Speech.speak).toHaveBeenCalledTimes(2);
   });
 
@@ -169,6 +186,7 @@ describe('speech-ready answer text', () => {
     const session = await speechService.createStream({ language: 'en-US' }, 'boundary-answer');
 
     session.enqueue('The first sentence is ready.');
+    await flushSpeechWork();
 
     expect(Speech.speak).toHaveBeenCalledWith(
       'The first sentence is ready.',
@@ -188,8 +206,53 @@ describe('speech-ready answer text', () => {
 
     session.enqueue('First sentence is ready. ');
     session.enqueue('Second sentence is already ready. ');
+    await flushSpeechWork();
 
     expect(natural.prepare).toHaveBeenCalledTimes(2);
+    await session.cancel();
+  });
+
+  it('limits natural-speech preparation to the current and next chunks', async () => {
+    const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
+    const pending: (() => void)[] = [];
+    natural.isAvailable.mockResolvedValue(true);
+    natural.prepare.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(() => resolve({ play: jest.fn(async () => 'done'), discard: jest.fn() }));
+        }),
+    );
+    const session = await speechService.createStream({ language: 'en-US' });
+
+    session.enqueue('First sentence. Second sentence. Third sentence.');
+    await flushSpeechWork();
+
+    expect(natural.prepare).toHaveBeenCalledTimes(2);
+    pending.splice(0).forEach((resolve) => resolve());
+    await session.cancel();
+  });
+
+  it('does not replace a slow configured natural voice with device speech', async () => {
+    const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
+    natural.isAvailable.mockResolvedValue(true);
+    let resolvePreparation:
+      ((speech: { play: jest.Mock<Promise<'done'>, []>; discard: jest.Mock }) => void) | undefined;
+    const play = jest.fn(async () => 'done' as const);
+    natural.prepare.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePreparation = resolve;
+        }),
+    );
+    const session = await speechService.createStream({ language: 'en-US' });
+
+    session.enqueue('Keep the selected natural voice.');
+    await flushSpeechWork();
+
+    expect(Speech.speak).not.toHaveBeenCalled();
+    resolvePreparation?.({ play, discard: jest.fn() });
+    await flushSpeechWork();
+    expect(play).toHaveBeenCalledTimes(1);
     await session.cancel();
   });
 });

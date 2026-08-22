@@ -4,6 +4,7 @@ export interface SpeakOptions {
   language?: string;
   rate?: number;
   pitch?: number;
+  onStart?: () => void;
   onDone?: () => void;
   onError?: () => void;
   onStopped?: () => void;

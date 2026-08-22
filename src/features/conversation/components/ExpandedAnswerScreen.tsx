@@ -69,6 +69,8 @@ export function ExpandedAnswerScreen() {
       answer.content,
       {
         language: getLanguage(language).speechLocale,
+        onError: () => setSpeechNotice(t('conversation.speechUnavailable')),
+        onUnavailable: () => setSpeechNotice(t('conversation.speechUnavailable')),
         onNaturalError: (error) => setSpeechNotice(error.message),
       },
       answer.id,

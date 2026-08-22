@@ -14,7 +14,7 @@ describe('ConversationComposer', () => {
       />,
     );
 
-    fireEvent.press(screen.getByLabelText('Stop recording and send'));
+    fireEvent.press(screen.getByLabelText('Stop voice and send'));
 
     expect(onMicrophone).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText('Your question')).toHaveProp('editable', false);

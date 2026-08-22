@@ -145,6 +145,8 @@ export function AssistantMessage({
       {
         language: getLanguage(answerLanguage).speechLocale,
         rate,
+        onError: () => setSpeechNotice(t('conversation.speechUnavailable')),
+        onUnavailable: () => setSpeechNotice(t('conversation.speechUnavailable')),
         onNaturalError: (error) => setSpeechNotice(error.message),
       },
       message.id,

@@ -15,7 +15,7 @@ describe('VoiceOrb', () => {
     const screen = render(
       <VoiceOrb audioLevel={0.8} reduceMotion status="recording" onPress={jest.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'Stop recording and get my answer' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Stop voice and get my answer' })).toBeTruthy();
 
     screen.rerender(<VoiceOrb audioLevel={0} reduceMotion status="speaking" onPress={jest.fn()} />);
     expect(screen.getByRole('button', { name: 'Stop Uwaci speaking' })).toBeTruthy();

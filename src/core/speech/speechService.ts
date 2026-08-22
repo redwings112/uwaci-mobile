@@ -140,19 +140,49 @@ export const speechService = {
     activeStreamCancel?.();
     naturalSpeechService.stop();
     await Speech.stop();
-    const [nativeVoice, naturalAvailable] = await Promise.all([
-      resolveNativeVoice(options.language),
-      naturalSpeechService.isAvailable(),
-    ]);
+    // Do not block the answer stream on network capability discovery or native
+    // voice enumeration. Deltas must be accepted as soon as uwaci ai emits them.
+    const nativeVoicePromise = resolveNativeVoice(options.language);
+    const naturalAvailablePromise = naturalSpeechService.isAvailable();
     let buffer = '';
     let queued = 0;
     let completed = 0;
     let finished = false;
     let cancelled = false;
     let failed = false;
+    let playbackStarted = false;
+    let useNativeForTurn = false;
     let naturalUsageFailureReported = false;
     let playbackChain = Promise.resolve();
     const preparedNaturalSpeech = new Set<PreparedNaturalSpeech>();
+    let activePreparations = 0;
+    const preparationWaiters: (() => void)[] = [];
+
+    const acquirePreparationSlot = async () => {
+      if (activePreparations < 2) {
+        activePreparations += 1;
+        return;
+      }
+      await new Promise<void>((resolve) => preparationWaiters.push(resolve));
+      activePreparations += 1;
+    };
+    const releasePreparationSlot = () => {
+      activePreparations -= 1;
+      preparationWaiters.shift()?.();
+    };
+    const prepareNaturalChunk = async (text: string) => {
+      await acquirePreparationSlot();
+      try {
+        if (cancelled) return 'stopped' as const;
+        const naturalAvailable = useNativeForTurn ? false : await naturalAvailablePromise;
+        if (!naturalAvailable) useNativeForTurn = true;
+        return useNativeForTurn
+          ? ('unavailable' as const)
+          : await naturalSpeechService.prepare(text, options.language);
+      } finally {
+        releasePreparationSlot();
+      }
+    };
 
     const finishIfReady = () => {
       if (!cancelled && finished && completed >= queued) {
@@ -161,8 +191,18 @@ export const speechService = {
         options.onDone?.();
       }
     };
-    const speakNativeChunk = (text: string): Promise<'done' | 'stopped' | 'error'> =>
-      new Promise((resolve) => {
+    const markPlaybackStarted = () => {
+      if (!playbackStarted) {
+        playbackStarted = true;
+        options.onStart?.();
+      }
+      updatePlayback('speaking', messageId ?? null);
+    };
+    const speakNativeChunk = async (text: string): Promise<'done' | 'stopped' | 'error'> => {
+      const nativeVoice = await nativeVoicePromise;
+      if (!nativeVoice.available) return 'error';
+      markPlaybackStarted();
+      return new Promise((resolve) => {
         Speech.speak(text, {
           ...nativeVoice.options,
           rate: options.rate ?? 0.96,
@@ -172,43 +212,15 @@ export const speechService = {
           onError: () => resolve('error'),
         });
       });
+    };
     const queueChunk = (raw: string) => {
       const text = prepareTextForSpeech(raw, options.language);
       if (!text || cancelled) return;
       queued += 1;
-      updatePlayback('speaking', messageId ?? null);
-      if (!naturalAvailable) {
-        if (!nativeVoice.available) {
-          failed = true;
-          updatePlayback('idle');
-          options.onError?.();
-          options.onUnavailable?.();
-          return;
-        }
-        Speech.speak(text, {
-          ...nativeVoice.options,
-          rate: options.rate ?? 0.96,
-          pitch: options.pitch ?? 1.02,
-          onDone: () => {
-            completed += 1;
-            finishIfReady();
-          },
-          onStopped: () => {
-            completed += 1;
-            if (!cancelled) options.onStopped?.();
-            finishIfReady();
-          },
-          onError: () => {
-            if (failed || cancelled) return;
-            failed = true;
-            updatePlayback('idle');
-            options.onError?.();
-            options.onUnavailable?.();
-          },
-        });
-        return;
-      }
-      const prepared = naturalSpeechService.prepare(text, options.language);
+      // Keep only the current and next sentence in synthesis. This maintains
+      // continuous playback without issuing one provider request per sentence
+      // for a long speaker-tapped answer all at once.
+      const prepared = prepareNaturalChunk(text);
       void prepared.then((result) => {
         if (typeof result !== 'object') return;
         if (cancelled) result.discard();
@@ -216,23 +228,25 @@ export const speechService = {
       });
       playbackChain = playbackChain.then(async () => {
         if (cancelled || failed) return;
-        const naturalSpeech = await prepared;
+        const naturalSpeech = useNativeForTurn ? 'unavailable' : await prepared;
         if (typeof naturalSpeech === 'object') preparedNaturalSpeech.delete(naturalSpeech);
         if (cancelled) {
           if (typeof naturalSpeech === 'object') naturalSpeech.discard();
           return;
         }
         let outcome =
-          typeof naturalSpeech === 'object' ? await naturalSpeech.play() : naturalSpeech;
+          typeof naturalSpeech === 'object'
+            ? await naturalSpeech.play(markPlaybackStarted)
+            : naturalSpeech;
         if (isNaturalUsageFailure(outcome)) {
           if (!naturalUsageFailureReported) {
             naturalUsageFailureReported = true;
             reportNaturalUsageFailure(outcome, options);
           }
-          outcome = nativeVoice.available ? await speakNativeChunk(text) : 'error';
+          outcome = 'error';
         }
-        if (outcome === 'unavailable' || outcome === 'error')
-          outcome = nativeVoice.available ? await speakNativeChunk(text) : 'error';
+        if (useNativeForTurn && (outcome === 'unavailable' || outcome === 'error'))
+          outcome = await speakNativeChunk(text);
         if (cancelled) return;
         if (outcome === 'error') {
           if (failed) return;

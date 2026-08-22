@@ -6,6 +6,7 @@ import { appConfig } from '@/application/config/appConfig';
 import { baseApi } from '@/core/api/baseApi';
 import { getAccessToken } from '@/core/auth/authSession';
 import { mapApiError } from '@/core/errors/mapApiError';
+import { logger } from '@/core/logging/logger';
 import { store } from '@/store';
 
 interface CapabilitiesEnvelope {
@@ -22,7 +23,7 @@ export type NaturalPlaybackResult =
   | 'metering_unavailable';
 
 export interface PreparedNaturalSpeech {
-  play(): Promise<NaturalPlaybackResult>;
+  play(onStarted?: () => void): Promise<NaturalPlaybackResult>;
   discard(): void;
 }
 
@@ -36,6 +37,7 @@ interface CapabilityRequest {
 let capabilityRequest: CapabilityRequest | null = null;
 let activeStop: (() => void) | null = null;
 const pendingGenerationControllers = new Set<AbortController>();
+const PLAYBACK_START_TIMEOUT_MS = 5_000;
 
 async function authorizationHeaders(): Promise<Record<string, string>> {
   const token = await getAccessToken();
@@ -109,6 +111,10 @@ async function createPreparedSpeech(
     });
     if (!response.ok) {
       if (response.status === 429 || response.status >= 500) capabilityRequest = null;
+      logger.warn('Natural speech request failed', {
+        status: response.status,
+        language: languageCode(language),
+      });
       return playbackError(response);
     }
     store.dispatch(baseApi.util.invalidateTags(['Usage']));
@@ -143,15 +149,20 @@ async function createPreparedSpeech(
     };
 
     return {
-      play: async () => {
+      play: async (onStarted?: () => void) => {
         if (discarded) return Promise.resolve('stopped');
         try {
           return await new Promise<NaturalPlaybackResult>((resolve) => {
             const player = createAudioPlayer(uri, { updateInterval: 80 });
             let settled = false;
+            let playRequested = false;
+            let playbackStarted = false;
+            let startupTimer: ReturnType<typeof setTimeout> | undefined;
+            let subscription: { remove(): void } = { remove: () => undefined };
             const finish = (result: NaturalPlaybackResult) => {
               if (settled) return;
               settled = true;
+              if (startupTimer) clearTimeout(startupTimer);
               subscription.remove();
               player.pause();
               player.release();
@@ -161,15 +172,48 @@ async function createPreparedSpeech(
               resolve(result);
             };
             const stop = () => finish('stopped');
-            const subscription = player.addListener('playbackStatusUpdate', (status) => {
+            const startPlayback = () => {
+              if (playRequested || settled) return;
+              playRequested = true;
+              player.play();
+            };
+            subscription = player.addListener('playbackStatusUpdate', (status) => {
               if (status.didJustFinish) finish('done');
-              else if (status.error) finish('error');
+              else if (status.error) {
+                logger.warn('Natural speech player reported an error', {
+                  language: languageCode(language),
+                });
+                finish('error');
+              } else {
+                if (status.isLoaded) startPlayback();
+                if (status.playing) {
+                  if (!playbackStarted) {
+                    playbackStarted = true;
+                    onStarted?.();
+                  }
+                  if (startupTimer) {
+                    clearTimeout(startupTimer);
+                    startupTimer = undefined;
+                  }
+                }
+              }
             });
             stopPlayback = stop;
             activeStop = stop;
-            player.play();
+            startupTimer = setTimeout(() => {
+              logger.warn('Natural speech playback did not start', {
+                language: languageCode(language),
+                timeoutMs: PLAYBACK_START_TIMEOUT_MS,
+              });
+              finish('error');
+            }, PLAYBACK_START_TIMEOUT_MS);
+            if (player.currentStatus.isLoaded) startPlayback();
           });
-        } catch {
+        } catch (error: unknown) {
+          logger.warn('Natural speech player could not be created', {
+            error: error instanceof Error ? error.name : 'unknown',
+            language: languageCode(language),
+          });
           cleanup();
           return 'error';
         }
@@ -181,7 +225,12 @@ async function createPreparedSpeech(
         cleanup();
       },
     };
-  } catch {
+  } catch (error: unknown) {
+    if (!controller.signal.aborted)
+      logger.warn('Natural speech generation failed', {
+        error: error instanceof Error ? error.name : 'unknown',
+        language: languageCode(language),
+      });
     return controller.signal.aborted ? 'stopped' : 'error';
   } finally {
     pendingGenerationControllers.delete(controller);

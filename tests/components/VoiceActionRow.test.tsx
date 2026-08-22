@@ -12,8 +12,8 @@ describe('VoiceActionRow', () => {
     );
 
     fireEvent.press(screen.getByRole('button', { name: 'Open chat' }));
-    fireEvent.press(screen.getByRole('button', { name: 'Cancel recording' }));
-    fireEvent.press(screen.getByRole('button', { name: 'Stop recording and get my answer' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel voice message' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Stop voice and get my answer' }));
 
     expect(onTypeInstead).toHaveBeenCalledTimes(1);
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -26,7 +26,7 @@ describe('VoiceActionRow', () => {
       <VoiceActionRow askDisabled onAsk={onAsk} onCancel={jest.fn()} onTypeInstead={jest.fn()} />,
     );
 
-    fireEvent.press(screen.getByRole('button', { name: 'Stop recording and get my answer' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Stop voice and get my answer' }));
     expect(onAsk).not.toHaveBeenCalled();
   });
 });
