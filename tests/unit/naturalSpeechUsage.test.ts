@@ -157,4 +157,69 @@ describe('natural speech usage control', () => {
     await expect(playback).resolves.toBe('done');
     expect(player.remove).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects a native completion event when playback never actually started', async () => {
+    let playbackListener: ((status: Record<string, unknown>) => void) | undefined;
+    const player = {
+      currentStatus: { isLoaded: false },
+      play: jest.fn(),
+      pause: jest.fn(),
+      remove: jest.fn(),
+      addListener: jest.fn(
+        (_event: string, listener: (status: Record<string, unknown>) => void) => {
+          playbackListener = listener;
+          return { remove: jest.fn() };
+        },
+      ),
+    };
+    jest.mocked(createAudioPlayer).mockReturnValueOnce(player as never);
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { natural_tts: true } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'correlation-id' },
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      }) as typeof fetch;
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const prepared = await naturalSpeechService.prepare('ElevenLabs voice', 'en-US');
+    if (typeof prepared !== 'object') throw new Error('Expected prepared ElevenLabs speech.');
+    const playback = prepared.play();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    playbackListener?.({ isLoaded: true, playing: false, didJustFinish: true });
+
+    await expect(playback).resolves.toBe('error');
+    expect(consoleError).toHaveBeenCalledWith(
+      'Natural speech finished without starting playback',
+      expect.objectContaining({ correlationId: 'correlation-id' }),
+    );
+    consoleError.mockRestore();
+  });
+
+  it('stores WAV output from Deepgram, Gemini, or Simba with a WAV extension', async () => {
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { natural_tts: true } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: (name: string) => (name === 'content-type' ? 'audio/wav' : null) },
+        arrayBuffer: async () => new Uint8Array([82, 73, 70, 70]).buffer,
+      }) as typeof fetch;
+
+    const prepared = await naturalSpeechService.prepare('Primary human voice', 'fr-FR');
+
+    expect(typeof prepared).toBe('object');
+    const fileConstructor = jest.requireMock('expo-file-system').File as jest.Mock;
+    expect(fileConstructor.mock.calls.at(-1)?.[1]).toMatch(/\.wav$/);
+    if (typeof prepared === 'object') prepared.discard();
+  });
 });

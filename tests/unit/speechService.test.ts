@@ -195,6 +195,21 @@ describe('speech-ready answer text', () => {
     await session.cancel();
   });
 
+  it('releases the first unpunctuated phrase before the text answer finishes', async () => {
+    const session = await speechService.createStream({ language: 'en-US' }, 'early-answer');
+
+    session.enqueue(
+      'This first spoken phrase is intentionally long enough to begin before more text arrives',
+    );
+    await flushSpeechWork();
+
+    expect(Speech.speak).toHaveBeenCalledWith(
+      expect.stringMatching(/^This first spoken phrase/),
+      expect.objectContaining({ language: 'en-US' }),
+    );
+    await session.cancel();
+  });
+
   it('prepares the following natural-speech chunk while the first is playing', async () => {
     const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
     natural.isAvailable.mockResolvedValue(true);
@@ -212,7 +227,7 @@ describe('speech-ready answer text', () => {
     await session.cancel();
   });
 
-  it('limits natural-speech preparation to the current and next chunks', async () => {
+  it('synthesizes only one chunk at a time to avoid provider quota bursts', async () => {
     const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
     const pending: (() => void)[] = [];
     natural.isAvailable.mockResolvedValue(true);
@@ -227,7 +242,7 @@ describe('speech-ready answer text', () => {
     session.enqueue('First sentence. Second sentence. Third sentence.');
     await flushSpeechWork();
 
-    expect(natural.prepare).toHaveBeenCalledTimes(2);
+    expect(natural.prepare).toHaveBeenCalledTimes(1);
     pending.splice(0).forEach((resolve) => resolve());
     await session.cancel();
   });
@@ -254,5 +269,22 @@ describe('speech-ready answer text', () => {
     await flushSpeechWork();
     expect(play).toHaveBeenCalledTimes(1);
     await session.cancel();
+  });
+
+  it('uses the device voice only when an error announcement cannot use natural speech', async () => {
+    const natural = naturalSpeechService as jest.Mocked<typeof naturalSpeechService>;
+    natural.isAvailable.mockResolvedValueOnce(true);
+    natural.prepare.mockResolvedValueOnce('error');
+
+    await speechService.speak('Please try saying that again.', {
+      language: 'en-US',
+      allowDeviceFallback: true,
+    });
+    await flushSpeechWork();
+
+    expect(Speech.speak).toHaveBeenCalledWith(
+      'Please try saying that again.',
+      expect.objectContaining({ language: 'en-US', voice: 'enhanced-en' }),
+    );
   });
 });

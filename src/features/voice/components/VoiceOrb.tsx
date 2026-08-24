@@ -40,7 +40,7 @@ function getOrbPresentation(
       gradient: [colors.violet, colors.fuchsia],
       accessibilityLabel: labels.stopSpeaking,
     };
-  if (['stopping', 'processing_audio', 'uploading'].includes(status))
+  if (['stopping', 'processing_audio', 'uploading', 'preparing_speech'].includes(status))
     return {
       icon: 'sparkle',
       gradient: [colors.brand, colors.brandDark],
@@ -64,7 +64,9 @@ export function VoiceOrb({
   const [motion] = useState(() => new Animated.Value(0));
   const recording = status === 'recording';
   const speaking = status === 'speaking';
-  const thinking = ['stopping', 'processing_audio', 'uploading'].includes(status);
+  const thinking = ['stopping', 'processing_audio', 'uploading', 'preparing_speech'].includes(
+    status,
+  );
   const active = recording || speaking || thinking;
 
   useEffect(() => {

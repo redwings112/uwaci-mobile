@@ -13,7 +13,7 @@ import { FeedbackSheet } from '@/features/feedback/components/FeedbackSheet';
 import type { FeedbackCategory } from '@/features/feedback/types';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
-import { selectPreferredLanguage } from '@/features/language/state/selectors';
+import { selectPreferredLanguage, selectUiLanguage } from '@/features/language/state/selectors';
 import { UsageExhaustedBanner } from '@/features/usage/components/UsageExhaustedBanner';
 import { RecordingIndicator } from '@/features/voice/components/RecordingIndicator';
 import { useVoiceQuery } from '@/features/voice/hooks/useVoiceQuery';
@@ -90,6 +90,7 @@ export function ConversationScreen({
   const network = useAppSelector((state) => state.network);
   const auth = useAppSelector((state) => state.auth);
   const language = useAppSelector(selectPreferredLanguage);
+  const uiLanguage = useAppSelector(selectUiLanguage);
   const voiceResponsesEnabled = useAppSelector((state) => state.settings.voiceResponsesEnabled);
   const activeStage = useAppSelector((state) => state.voice.thinking.activeStage);
   const recorder = useVoiceRecorder();
@@ -353,6 +354,14 @@ export function ConversationScreen({
         if (mapped.code === 'TRANSCRIPTION_LOW_CONFIDENCE' && typeof transcript === 'string')
           setRecoveryTranscript(transcript);
         dispatch(requestFailed(mapped.message));
+        void speechService.speak(
+          mapped.message,
+          {
+            language: getLanguage(uiLanguage).speechLocale,
+            allowDeviceFallback: true,
+          },
+          `voice-error-${Date.now()}`,
+        );
       }
     } finally {
       microphoneActionInProgress.current = false;
@@ -428,6 +437,7 @@ export function ConversationScreen({
       'processing_audio',
       'uploading',
       'response_received',
+      'preparing_speech',
     ].includes(recorder.status);
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>

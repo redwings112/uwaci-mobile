@@ -159,7 +159,7 @@ export const speechService = {
     const preparationWaiters: (() => void)[] = [];
 
     const acquirePreparationSlot = async () => {
-      if (activePreparations < 2) {
+      if (activePreparations < 1) {
         activePreparations += 1;
         return;
       }
@@ -245,12 +245,18 @@ export const speechService = {
           }
           outcome = 'error';
         }
-        if (useNativeForTurn && (outcome === 'unavailable' || outcome === 'error'))
+        if (
+          (useNativeForTurn || options.allowDeviceFallback) &&
+          (outcome === 'unavailable' || outcome === 'error')
+        )
           outcome = await speakNativeChunk(text);
         if (cancelled) return;
         if (outcome === 'error') {
           if (failed) return;
           failed = true;
+          activeStreamCancel = null;
+          preparedNaturalSpeech.forEach((speech) => speech.discard());
+          preparedNaturalSpeech.clear();
           updatePlayback('idle');
           options.onError?.();
           options.onUnavailable?.();
@@ -274,19 +280,20 @@ export const speechService = {
           buffer = buffer.slice(end);
           continue;
         }
+        const firstChunk = queued === 0;
         const clauseMatches = [...buffer.matchAll(/[,;:]\s+/g)];
         const clauseBoundary = clauseMatches.at(-1);
         const clauseEnd = clauseBoundary
           ? (clauseBoundary.index ?? 0) + clauseBoundary[0].length
           : 0;
-        if (clauseEnd >= 48) {
+        if (clauseEnd >= (firstChunk ? 32 : 48)) {
           queueChunk(buffer.slice(0, clauseEnd));
           buffer = buffer.slice(clauseEnd);
           continue;
         }
-        if (buffer.length > 96) {
-          const splitAt = buffer.lastIndexOf(' ', 84);
-          if (splitAt > 48) {
+        if (buffer.length > (firstChunk ? 64 : 96)) {
+          const splitAt = buffer.lastIndexOf(' ', firstChunk ? 56 : 84);
+          if (splitAt > (firstChunk ? 28 : 48)) {
             queueChunk(buffer.slice(0, splitAt + 1));
             buffer = buffer.slice(splitAt + 1);
             continue;

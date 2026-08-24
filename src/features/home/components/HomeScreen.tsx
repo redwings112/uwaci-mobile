@@ -26,7 +26,7 @@ import {
 } from '@/features/conversation/state/selectors';
 import { LanguageSelector } from '@/features/language/components/LanguageSelector';
 import { preferredLanguageChanged } from '@/features/language/state/languageSlice';
-import { selectPreferredLanguage } from '@/features/language/state/selectors';
+import { selectPreferredLanguage, selectUiLanguage } from '@/features/language/state/selectors';
 import { UsageExhaustedBanner } from '@/features/usage/components/UsageExhaustedBanner';
 import { LiveTranscriptionCard } from '@/features/voice/components/LiveTranscriptionCard';
 import { VoiceActionRow } from '@/features/voice/components/VoiceActionRow';
@@ -64,6 +64,7 @@ const busyStatuses = [
   'stopping',
   'processing_audio',
   'uploading',
+  'preparing_speech',
 ] as const;
 
 export function HomeScreen({ startRecording = false, conversationId }: HomeScreenProps) {
@@ -71,6 +72,7 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const language = useAppSelector(selectPreferredLanguage);
+  const uiLanguage = useAppSelector(selectUiLanguage);
   const messages = useAppSelector(selectConversationMessages);
   const activeConversationId = useAppSelector(selectActiveConversationId);
   const requestError = useAppSelector((state) => state.conversation.errorMessage);
@@ -222,6 +224,8 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
     completingVoiceTurn.current = true;
     const pendingSpeech: string[] = [];
     let firstDelta = true;
+    let speechStarted = false;
+    let speechSettled = false;
     try {
       const audio = await recorder.stop();
       if (!audio || !mounted.current) return;
@@ -232,10 +236,26 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
         .createStream(
           {
             language: getLanguage(language).speechLocale,
-            onStart: () => dispatch(voiceStatusChanged('speaking')),
-            onDone: finishSpeaking,
-            onStopped: () => dispatch(voiceStatusChanged('idle')),
-            onError: () => dispatch(voiceFailed(t('voice.speechFailed'))),
+            onStart: () => {
+              speechStarted = true;
+              dispatch(voiceStatusChanged('speaking'));
+            },
+            onDone: () => {
+              speechSettled = true;
+              streamSession.current = null;
+              finishSpeaking();
+            },
+            onStopped: () => {
+              speechSettled = true;
+              streamSession.current = null;
+              dispatch(voiceStatusChanged('idle'));
+            },
+            onError: () => {
+              speechSettled = true;
+              streamSession.current = null;
+              setConversationLoop(false);
+              dispatch(voiceFailed(t('voice.speechFailed')));
+            },
           },
           `voice-stream-${Date.now()}`,
         )
@@ -275,6 +295,11 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       setLastProcessingMs(result.processing.reduce((total, stage) => total + stage.durationMs, 0));
       dispatch(messageAdded(result.userMessage));
       dispatch(messageAdded(result.assistantMessage));
+      // The network request can finish before the first TTS chunk is ready.
+      // Keep hands-free listening blocked during that gap without claiming that
+      // audio is already playing. Otherwise the 120 ms resume timer starts a new
+      // recording and begin() cancels the pending natural-speech request.
+      if (!speechStarted && !speechSettled) dispatch(voiceStatusChanged('preparing_speech'));
       dispatch(requestFinished());
       if (result.voiceAction?.type === 'language_changed')
         dispatch(preferredLanguageChanged(result.voiceAction.language));
@@ -291,7 +316,16 @@ export function HomeScreen({ startRecording = false, conversationId }: HomeScree
       void streamSession.current?.cancel();
       streamSession.current = null;
       setConversationLoop(false);
-      dispatch(requestFailed(mapApiError(error).message));
+      const mapped = mapApiError(error);
+      dispatch(requestFailed(mapped.message));
+      void speechService.speak(
+        mapped.message,
+        {
+          language: getLanguage(uiLanguage).speechLocale,
+          allowDeviceFallback: true,
+        },
+        `voice-error-${Date.now()}`,
+      );
     } finally {
       completingVoiceTurn.current = false;
     }

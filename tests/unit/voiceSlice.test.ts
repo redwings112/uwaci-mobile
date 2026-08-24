@@ -35,6 +35,12 @@ describe('voice state machine', () => {
     });
   });
 
+  it('represents natural speech preparation without claiming playback started', () => {
+    const state = voiceReducer(undefined, voiceStatusChanged('preparing_speech'));
+    expect(state.status).toBe('preparing_speech');
+    expect(state.errorMessage).toBeNull();
+  });
+
   it('tracks measured streamed backend stages', () => {
     let state = voiceReducer(undefined, voiceThinkingStarted('transcribing'));
     state = voiceReducer(state, voiceThinkingCompleted({ stage: 'transcribing', durationMs: 420 }));

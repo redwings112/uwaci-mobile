@@ -10,4 +10,6 @@ export interface SpeakOptions {
   onStopped?: () => void;
   onUnavailable?: () => void;
   onNaturalError?: (error: AppError) => void;
+  /** Reserved for short accessibility/error announcements, never normal answers. */
+  allowDeviceFallback?: boolean;
 }

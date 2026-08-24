@@ -7,6 +7,7 @@ export type VoiceStatus =
   | 'processing_audio'
   | 'uploading'
   | 'response_received'
+  | 'preparing_speech'
   | 'speaking'
   | 'error';
 

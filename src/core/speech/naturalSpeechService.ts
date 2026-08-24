@@ -78,6 +78,15 @@ function idempotencyKey(): string {
   return `tts-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
 }
 
+function audioFileExtension(contentType: string | null): string {
+  const mimeType = contentType?.split(';', 1)[0]?.trim().toLowerCase();
+  if (mimeType === 'audio/wav' || mimeType === 'audio/x-wav') return 'wav';
+  if (mimeType === 'audio/mp4' || mimeType === 'audio/m4a' || mimeType === 'audio/x-m4a')
+    return 'm4a';
+  if (mimeType === 'audio/ogg') return 'ogg';
+  return 'mp3';
+}
+
 async function playbackError(response: Response): Promise<NaturalPlaybackResult> {
   try {
     const mapped = mapApiError(await response.json());
@@ -101,7 +110,7 @@ async function createPreparedSpeech(
     const response = await fetch(`${appConfig.apiBaseUrl}/api/v1/voice/speech`, {
       method: 'POST',
       headers: {
-        Accept: 'audio/mpeg',
+        Accept: 'audio/*',
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey(),
         ...(await authorizationHeaders()),
@@ -117,6 +126,8 @@ async function createPreparedSpeech(
       });
       return playbackError(response);
     }
+    const correlationId = response.headers?.get?.('X-Uwaci-Correlation-ID') ?? undefined;
+    const extension = audioFileExtension(response.headers?.get?.('content-type') ?? null);
     store.dispatch(baseApi.util.invalidateTags(['Usage']));
 
     let uri: string;
@@ -126,9 +137,17 @@ async function createPreparedSpeech(
       uri = objectUrl;
       cleanupUnderlyingFile = () => URL.revokeObjectURL(objectUrl);
     } else {
-      const file = new File(Paths.cache, `uwaci-speech-${Date.now()}.mp3`);
+      const audioBytes = new Uint8Array(await response.arrayBuffer());
+      if (audioBytes.byteLength === 0) {
+        logger.error('Natural speech response contained no audio', {
+          correlationId,
+          language: languageCode(language),
+        });
+        return 'error';
+      }
+      const file = new File(Paths.cache, `uwaci-speech-${Date.now()}.${extension}`);
       file.create({ overwrite: true, intermediates: true });
-      file.write(new Uint8Array(await response.arrayBuffer()));
+      file.write(audioBytes);
       uri = file.uri;
       cleanupUnderlyingFile = () => {
         try {
@@ -178,7 +197,16 @@ async function createPreparedSpeech(
               playRequested = true;
               player.volume = 1;
               player.muted = false;
-              player.play();
+              try {
+                player.play();
+              } catch (error: unknown) {
+                logger.error('Natural speech play request failed', {
+                  correlationId,
+                  error: error instanceof Error ? error.name : 'unknown',
+                  language: languageCode(language),
+                });
+                finish('error');
+              }
             };
             const configureAndCreatePlayer = async () => {
               await setIsAudioActiveAsync(true);
@@ -191,9 +219,18 @@ async function createPreparedSpeech(
               if (settled) return;
               player = createAudioPlayer(uri, { updateInterval: 80, downloadFirst: true });
               subscription = player.addListener('playbackStatusUpdate', (status) => {
-                if (status.didJustFinish) finish('done');
-                else if (status.error) {
-                  logger.warn('Natural speech player reported an error', {
+                if (status.didJustFinish) {
+                  if (playbackStarted) finish('done');
+                  else {
+                    logger.error('Natural speech finished without starting playback', {
+                      correlationId,
+                      language: languageCode(language),
+                    });
+                    finish('error');
+                  }
+                } else if (status.error) {
+                  logger.error('Natural speech player reported an error', {
+                    correlationId,
                     error: status.error,
                     language: languageCode(language),
                   });
@@ -217,14 +254,16 @@ async function createPreparedSpeech(
             stopPlayback = stop;
             activeStop = stop;
             startupTimer = setTimeout(() => {
-              logger.warn('Natural speech playback did not start', {
+              logger.error('Natural speech playback did not start', {
+                correlationId,
                 language: languageCode(language),
                 timeoutMs: PLAYBACK_START_TIMEOUT_MS,
               });
               finish('error');
             }, PLAYBACK_START_TIMEOUT_MS);
             void configureAndCreatePlayer().catch((error: unknown) => {
-              logger.warn('Natural speech audio session could not be configured', {
+              logger.error('Natural speech audio session could not be configured', {
+                correlationId,
                 error: error instanceof Error ? error.name : 'unknown',
                 language: languageCode(language),
               });
@@ -232,7 +271,8 @@ async function createPreparedSpeech(
             });
           });
         } catch (error: unknown) {
-          logger.warn('Natural speech player could not be created', {
+          logger.error('Natural speech player could not be created', {
+            correlationId,
             error: error instanceof Error ? error.name : 'unknown',
             language: languageCode(language),
           });
