@@ -29,7 +29,7 @@ export function SettingsScreen() {
       <View className="mb-8 flex-row items-center gap-3">
         <IconButton
           icon="arrowLeft"
-          label="Go back"
+          label={t('a11y.goBack')}
           className="bg-surface"
           onPress={() => router.back()}
         />

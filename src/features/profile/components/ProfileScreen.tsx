@@ -155,7 +155,7 @@ export function ProfileScreen({ pipe = 'pipe0' }: { pipe?: PipeId }) {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-[#111126]" edges={['top', 'bottom']}>
-      <AppHeader actionLabel="Open notifications" actionIcon="bell" />
+      <AppHeader actionLabel={t('a11y.notifications')} actionIcon="bell" />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-3 pb-4"

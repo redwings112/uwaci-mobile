@@ -3,6 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 
 import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { colors } from '@/theme/tokens';
+import { useTranslation } from 'react-i18next';
 
 interface PasswordInputProps {
   value: string;
@@ -11,18 +12,19 @@ interface PasswordInputProps {
 }
 
 export function PasswordInput({ value, onChangeText, mode }: PasswordInputProps) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
-  const actionLabel = visible ? 'Hide password' : 'Show password';
+  const actionLabel = visible ? t('a11y.hidePassword') : t('a11y.showPassword');
 
   return (
     <View className="relative mt-2">
       <TextInput
-        accessibilityLabel="Password"
+        accessibilityLabel={t('a11y.password')}
         autoCapitalize="none"
         autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
         className="min-h-12 rounded-control border border-border bg-canvas px-4 pr-14 text-ink dark:border-white/10 dark:bg-[#111126] dark:text-white"
         onChangeText={onChangeText}
-        placeholder="At least 6 characters"
+        placeholder={t('auth.passwordPlaceholder')}
         placeholderTextColor="#777789"
         secureTextEntry={!visible}
         value={value}

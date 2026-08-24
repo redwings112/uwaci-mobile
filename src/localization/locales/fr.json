@@ -47,7 +47,8 @@
     "emptyMessage": "Parle ou écris naturellement. Uwaci garde la voix et le texte dans une seule conversation.",
     "noAnswerTitle": "Pas encore de réponse",
     "noAnswerFull": "Pose une question à Uwaci pour voir la réponse complète.",
-    "noAnswerShort": "Pose une question à Uwaci pour voir la réponse."
+    "noAnswerShort": "Pose une question à Uwaci pour voir la réponse.",
+    "speechVoiceMissing": "Aucune voix correspondante n'est installée sur cet appareil. La réponse reste disponible en texte."
   },
   "settings": {
     "title": "Paramètres",
@@ -75,7 +76,30 @@
     "AUTHENTICATION_REQUIRED": "Reconnecte-toi pour continuer.",
     "NETWORK_ERROR": "Vérifie ta connexion et réessaie.",
     "RECORDING_MISSING": "Aucun message vocal n’a été créé. Réessaie.",
-    "RECORDING_TOO_SHORT": "Ce message vocal était trop court. Maintiens le micro, parle, puis touche à nouveau."
+    "RECORDING_TOO_SHORT": "Ce message vocal était trop court. Maintiens le micro, parle, puis touche à nouveau.",
+    "UNKNOWN_FALLBACK": "Une erreur s'est produite. Réessaie.",
+    "GENERIC_REQUEST": "Uwaci n'a pas pu traiter cette demande.",
+    "authNetwork": "Impossible de joindre Uwaci. Vérifie ta connexion et réessaie.",
+    "authInvalid": "Cet e-mail ou ce mot de passe est incorrect. Réessaie.",
+    "authConfirmEmail": "Confirme ton e-mail, puis connecte-toi.",
+    "authAlreadyExists": "Un compte existe déjà pour cet e-mail. Essaie plutôt de te connecter.",
+    "authGeneric": "La connexion n'a pas pu aboutir pour le moment. Réessaie.",
+    "sessionRestore": "Uwaci n'a pas pu restaurer une session sécurisée. Réessaie.",
+    "sessionRequired": "Connecte-toi ou crée un compte pour démarrer une conversation.",
+    "sessionGuestOff": "L'accès invité est désactivé sur ce projet Uwaci. Connecte-toi ou crée un compte pour continuer.",
+    "sessionStart": "Uwaci n'a pas pu démarrer une session sécurisée. Connecte-toi ou réessaie.",
+    "micPermission": "L'accès au micro est nécessaire pour poser une question vocale. Tu peux aussi écrire ta question.",
+    "micStartFailed": "Le micro n'a pas pu démarrer.",
+    "micNotReady": "Le micro n'est pas prêt. Réessaie.",
+    "recordingFailed": "L'enregistrement n'a pas pu être terminé.",
+    "recordingCancel": "L'enregistrement n'a pas pu être annulé.",
+    "recordingEmpty": "L'enregistrement est vide.",
+    "streamIncomplete": "La réponse s'est interrompue avant la fin.",
+    "savedRead": "Les réponses enregistrées n'ont pas pu être lues sur cet appareil.",
+    "savedWrite": "Les réponses enregistrées n'ont pas pu être écrites sur cet appareil.",
+    "questionEmpty": "Écris d'abord une question.",
+    "questionTooLong": "Raccourcis ta question.",
+    "accountUnavailable": "L'accès au compte est indisponible : la configuration Supabase publique est absente."
   },
   "answer": {
     "title": "Réponse",
@@ -90,7 +114,11 @@
     "moreQuestions": "Tu peux poser d'autres questions",
     "placeholder": "Pose n'importe quelle question…",
     "tipTitle": "Conseil Uwaci",
-    "tipBody": "Uwaci utilise des sources fiables et le savoir local pour te donner les meilleures réponses."
+    "tipBody": "Uwaci utilise des sources fiables et le savoir local pour te donner les meilleures réponses.",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins",
+    "showFull": "Afficher la réponse complète",
+    "showLessLabel": "Réduire la réponse"
   },
   "onboarding": {
     "chooseLanguage": "Choisis ta langue",
@@ -159,7 +187,18 @@
     "stageReasoning": "Rédaction de ta réponse",
     "progressSpoke": "Tu as parlé",
     "progressProcessing": "Uwaci répond",
-    "progressAnswer": "Uwaci parle"
+    "progressAnswer": "Uwaci parle",
+    "micStopRecording": "Arrêter l'enregistrement",
+    "micStopSpoken": "Arrêter la réponse vocale",
+    "micProcessing": "Ta question vocale est en cours",
+    "micStart": "Démarrer l'enregistrement vocal",
+    "micHintStop": "Arrête et envoie ta question",
+    "micHintStopSpoken": "Arrête la lecture de la réponse",
+    "micHintStart": "Demande l'accès au micro et démarre l'enregistrement",
+    "micTapToFinish": "Touche pour terminer",
+    "micTapToStopListening": "Touche pour arrêter l'écoute",
+    "micWorking": "Je travaille sur ta question…",
+    "micTapToSpeak": "Touche pour parler"
   },
   "privacy": {
     "title": "Tes données sont privées",
@@ -223,7 +262,9 @@
     "createAction": "Créer un compte",
     "signInAction": "Se connecter",
     "haveAccount": "Tu as déjà un compte ? Connecte-toi",
-    "newHere": "Nouveau sur Uwaci ? Crée un compte"
+    "newHere": "Nouveau sur Uwaci ? Crée un compte",
+    "emailPlaceholder": "toi@exemple.com",
+    "passwordPlaceholder": "Au moins 6 caractères"
   },
   "library": {
     "history": "Historique",
@@ -236,7 +277,9 @@
     "loadError": "Les réponses enregistrées n’ont pas pu être chargées depuis cet appareil.",
     "removeError": "Cette réponse n’a pas pu être retirée de cet appareil.",
     "signIn": "Se connecter",
-    "savedAnswer": "Réponse enregistrée"
+    "savedAnswer": "Réponse enregistrée",
+    "untitledConversation": "Conversation Uwaci",
+    "continuePreview": "Reprends cette conversation."
   },
   "profile": {
     "groups": {
@@ -385,5 +428,46 @@
     "planPrompt": "Aide-moi à transformer un problème de ma communauté en plan d’action simple, étape par étape.",
     "learnTitle": "Apprends quelque chose dans ma langue",
     "learnPrompt": "Explique-moi simplement une compétence numérique utile et donne-moi un court exercice."
+  },
+  "suggestions": {
+    "business": "Idées de petit commerce avec un petit budget",
+    "pricing": "Comment fixer mes prix ?",
+    "customers": "Stratégies pour trouver des clients"
+  },
+  "a11y": {
+    "goBack": "Retour",
+    "brand": "Uwaci",
+    "brandTagline": "Uwaci. Le savoir pour l'humanité.",
+    "brandLogo": "Logo Uwaci",
+    "loadingApp": "Chargement d'Uwaci",
+    "readAloud": "Lire la réponse à voix haute",
+    "stopSpoken": "Arrêter la réponse vocale",
+    "pauseSpoken": "Mettre la réponse en pause",
+    "resumeSpoken": "Reprendre la réponse",
+    "playSpoken": "Lire la réponse",
+    "copyAnswer": "Copier la réponse",
+    "answerCopied": "Réponse copiée",
+    "expandAnswer": "Afficher la réponse complète",
+    "moreActions": "Plus d’actions sur la réponse",
+    "closeActions": "Fermer les actions",
+    "closeFeedback": "Fermer le retour",
+    "assistantActions": "Ouvrir les actions de l'assistant",
+    "accountSettings": "Ouvrir le compte et les réglages",
+    "notifications": "Ouvrir les notifications",
+    "appearanceHelp": "Aide sur l'apparence",
+    "privacyNotice": "Tes données sont privées. Uwaci protège tes conversations.",
+    "privacyHint": "Ouvre le détail de confidentialité",
+    "newChat": "Démarrer une nouvelle discussion",
+    "cancelRecording": "Annuler l'enregistrement vocal",
+    "retryRecording": "Réenregistrer la question",
+    "assistantAnswered": "Uwaci a répondu",
+    "playYourRecording": "Écouter ton enregistrement",
+    "stopYourRecording": "Arrêter ton enregistrement",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "emailAddress": "Adresse e-mail",
+    "password": "Mot de passe",
+    "youSaid": "Tu as dit",
+    "accountHelp": "Aide sur le compte"
   }
 }

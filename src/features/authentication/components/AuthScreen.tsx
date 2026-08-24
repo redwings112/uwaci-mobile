@@ -40,7 +40,7 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
 
   const submit = async () => {
     if (!client) {
-      setMessage('Account access is unavailable because public Supabase settings are missing.');
+      setMessage(t('errors.accountUnavailable'));
       return;
     }
     setLoading(true);
@@ -82,7 +82,12 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <AppHeader back onBack={() => router.back()} actionIcon="help" actionLabel="Account help" />
+        <AppHeader
+          back
+          onBack={() => router.back()}
+          actionIcon="help"
+          actionLabel={t('a11y.accountHelp')}
+        />
         <ScrollView
           className="flex-1"
           contentContainerClassName="flex-grow px-5 pt-6"
@@ -109,13 +114,13 @@ export function AuthScreen({ mode, next, conversationId }: AuthScreenProps) {
             <View>
               <Typography variant="label">{t('auth.email')}</Typography>
               <TextInput
-                accessibilityLabel="Email address"
+                accessibilityLabel={t('a11y.emailAddress')}
                 autoCapitalize="none"
                 autoComplete="email"
                 className="mt-2 min-h-12 rounded-control border border-border bg-canvas px-4 text-ink dark:border-white/10 dark:bg-[#111126] dark:text-white"
                 keyboardType="email-address"
                 onChangeText={setEmail}
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor="#777789"
                 value={email}
               />

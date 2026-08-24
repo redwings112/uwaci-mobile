@@ -88,7 +88,7 @@ export function ExpandedAnswerScreen() {
       <View className="h-16 flex-row items-center justify-between px-3">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('a11y.goBack')}
           className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface dark:border-white/10 dark:bg-white/5"
           onPress={() => router.back()}
         >
@@ -108,7 +108,7 @@ export function ExpandedAnswerScreen() {
         <View className="flex-row gap-2">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={activePlayback ? 'Stop spoken answer' : 'Read answer aloud'}
+            accessibilityLabel={activePlayback ? t('a11y.stopSpoken') : t('a11y.readAloud')}
             className={`h-11 w-11 items-center justify-center rounded-full border border-border ${activePlayback ? 'bg-danger' : 'bg-surface dark:bg-white/5'}`}
             onPress={() => void speak()}
           >
@@ -120,7 +120,7 @@ export function ExpandedAnswerScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={copied ? 'Answer copied' : 'Copy answer'}
+            accessibilityLabel={copied ? t('a11y.answerCopied') : t('a11y.copyAnswer')}
             className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface dark:border-white/10 dark:bg-white/5"
             onPress={() => void copy()}
           >
@@ -163,7 +163,7 @@ export function ExpandedAnswerScreen() {
       <View className="mx-4 mb-3 flex-row items-center rounded-full border border-border bg-surface px-2 py-1.5 dark:border-white/10 dark:bg-white/5">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={activePlayback ? 'Stop spoken answer' : 'Play spoken answer'}
+          accessibilityLabel={activePlayback ? t('a11y.stopSpoken') : t('a11y.playSpoken')}
           className="h-11 w-11 items-center justify-center rounded-full bg-brand"
           onPress={() => void speak()}
         >

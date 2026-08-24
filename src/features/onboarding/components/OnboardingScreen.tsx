@@ -101,7 +101,7 @@ export function OnboardingScreen() {
       <View className="flex-1 justify-between pb-5 pt-12">
         <View className="items-center">
           <Image
-            accessibilityLabel="Uwaci logo"
+            accessibilityLabel={t('a11y.brandLogo')}
             className="h-52 w-52"
             resizeMode="contain"
             source={require('../../../../assets/logo.png')}

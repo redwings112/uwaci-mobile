@@ -13,7 +13,7 @@ export function UwaciLogo({ dark = false, compact = false, tagline = false }: Uw
     <View
       className="flex-row items-center gap-2"
       accessible
-      accessibilityLabel={tagline ? 'Uwaci. Knowledge for humanity.' : 'Uwaci'}
+      accessibilityLabel={tagline ? t('a11y.brandTagline') : t('a11y.brand')}
     >
       <Image
         className={compact ? 'h-9 w-9' : 'h-14 w-14'}

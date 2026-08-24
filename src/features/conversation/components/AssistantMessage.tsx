@@ -169,7 +169,7 @@ export function AssistantMessage({
         {sentAt ? <Text className="ml-2 text-xs text-muted">· {sentAt}</Text> : null}
         <View className="ml-auto flex-row gap-1">
           <Pressable
-            accessibilityLabel={activePlayback ? 'Stop spoken answer' : 'Read answer aloud'}
+            accessibilityLabel={activePlayback ? t('a11y.stopSpoken') : t('a11y.readAloud')}
             className={`h-11 w-11 items-center justify-center rounded-full ${activePlayback ? 'bg-danger' : 'bg-lavender'}`}
             onPress={() => void speak()}
           >
@@ -180,7 +180,7 @@ export function AssistantMessage({
             />
           </Pressable>
           <Pressable
-            accessibilityLabel={copied ? 'Answer copied' : 'Copy answer'}
+            accessibilityLabel={copied ? t('a11y.answerCopied') : t('a11y.copyAnswer')}
             className="h-11 w-11 items-center justify-center rounded-full"
             onPress={() => void copy()}
           >
@@ -189,7 +189,7 @@ export function AssistantMessage({
           {onExpand ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Expand the full answer"
+              accessibilityLabel={t('a11y.expandAnswer')}
               className="h-11 flex-row items-center gap-1 rounded-full border border-border px-3"
               onPress={onExpand}
             >
@@ -198,7 +198,7 @@ export function AssistantMessage({
             </Pressable>
           ) : null}
           <Pressable
-            accessibilityLabel="More answer actions"
+            accessibilityLabel={t('a11y.moreActions')}
             className="h-11 w-11 items-center justify-center rounded-full"
             onPress={() => setActionsVisible(true)}
           >
@@ -230,12 +230,12 @@ export function AssistantMessage({
       {collapsible ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={collapsed ? 'Show the full answer' : 'Show less of the answer'}
+          accessibilityLabel={collapsed ? t('answer.showFull') : t('answer.showLessLabel')}
           className="min-h-10 flex-row items-center gap-1"
           onPress={() => setExpanded((value) => !value)}
         >
           <Text className="text-sm font-semibold text-brand">
-            {collapsed ? 'Show more' : 'Show less'}
+            {collapsed ? t('answer.showMore') : t('answer.showLess')}
           </Text>
           <AppIcon color={colors.brand} name={collapsed ? 'chevronDown' : 'chevronUp'} size={17} />
         </Pressable>
@@ -244,12 +244,12 @@ export function AssistantMessage({
         <Pressable
           accessibilityLabel={
             paused
-              ? 'Resume spoken answer'
+              ? t('a11y.resumeSpoken')
               : activePlayback
                 ? Platform.OS === 'android'
-                  ? 'Stop spoken answer'
-                  : 'Pause spoken answer'
-                : 'Play spoken answer'
+                  ? t('a11y.stopSpoken')
+                  : t('a11y.pauseSpoken')
+                : t('a11y.playSpoken')
           }
           className="h-11 w-11 items-center justify-center rounded-full bg-lavender"
           onPress={() => void togglePlayback()}

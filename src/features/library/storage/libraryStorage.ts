@@ -1,6 +1,7 @@
 import { File, Paths } from 'expo-file-system';
 
 import { AppError } from '@/core/errors/AppError';
+import { i18n } from '@/localization';
 
 export interface SavedAnswer {
   id: string;
@@ -46,13 +47,9 @@ async function readLibrary(): Promise<LibraryData> {
     }
     return { savedByUser };
   } catch (error: unknown) {
-    throw new AppError(
-      'STORAGE_ERROR',
-      'Saved answers could not be read from this device.',
-      true,
-      undefined,
-      { cause: error instanceof Error ? error.name : 'unknown' },
-    );
+    throw new AppError('STORAGE_ERROR', i18n.t('errors.savedRead'), true, undefined, {
+      cause: error instanceof Error ? error.name : 'unknown',
+    });
   }
 }
 
@@ -61,13 +58,9 @@ async function writeLibrary(data: LibraryData): Promise<void> {
     if (!libraryFile.exists) libraryFile.create({ intermediates: true });
     libraryFile.write(JSON.stringify(data));
   } catch (error: unknown) {
-    throw new AppError(
-      'STORAGE_ERROR',
-      'Saved answers could not be written to this device.',
-      true,
-      undefined,
-      { cause: error instanceof Error ? error.name : 'unknown' },
-    );
+    throw new AppError('STORAGE_ERROR', i18n.t('errors.savedWrite'), true, undefined, {
+      cause: error instanceof Error ? error.name : 'unknown',
+    });
   }
 }
 

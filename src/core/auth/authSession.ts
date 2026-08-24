@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from '@/core/storage/storageKeys';
 
 import { getAuthClient } from './authClient';
 import type { AuthSession } from './authTypes';
+import { i18n } from '@/localization';
 
 function fromSupabaseSession(session: Session): AuthSession {
   return {
@@ -90,11 +91,7 @@ export async function initializeAuthSession(): Promise<AuthSession | null> {
   }
   if (stored) return stored;
   if (current.error) {
-    throw new AppError(
-      'AUTHENTICATION_REQUIRED',
-      'Uwaci could not restore a secure session. Please try again.',
-      true,
-    );
+    throw new AppError('AUTHENTICATION_REQUIRED', i18n.t('errors.sessionRestore'), true);
   }
   return null;
 }
@@ -110,19 +107,15 @@ export async function ensureAuthSession(): Promise<AuthSession> {
   if (restored) return restored;
   const client = getAuthClient();
   if (!client) {
-    throw new AppError(
-      'AUTHENTICATION_REQUIRED',
-      'Sign in or create an account to start a conversation.',
-      true,
-    );
+    throw new AppError('AUTHENTICATION_REQUIRED', i18n.t('errors.sessionRequired'), true);
   }
   const anonymous = await client.auth.signInAnonymously();
   if (anonymous.error || !anonymous.data.session) {
     throw new AppError(
       'AUTHENTICATION_REQUIRED',
       anonymous.error?.message?.toLowerCase().includes('anonymous')
-        ? 'Guest access is disabled for this Uwaci project. Sign in or create an account to continue.'
-        : 'Uwaci could not start a secure session. Please sign in or try again.',
+        ? i18n.t('errors.sessionGuestOff')
+        : i18n.t('errors.sessionStart'),
       true,
     );
   }

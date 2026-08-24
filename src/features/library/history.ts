@@ -1,4 +1,5 @@
 import type { Conversation } from '@/features/conversation/types';
+import { i18n } from '@/localization';
 
 export interface HistoryEntry {
   conversationId: string;
@@ -16,8 +17,11 @@ export function conversationToHistoryEntry(conversation: Conversation): HistoryE
     .find((message) => message.role === 'assistant');
   return {
     conversationId: conversation.id,
-    title: conversation.title?.trim() || latestUser?.content.slice(0, 48) || 'Uwaci conversation',
-    preview: latestAssistant?.content || latestUser?.content || 'Continue this conversation.',
+    title:
+      conversation.title?.trim() ||
+      latestUser?.content.slice(0, 48) ||
+      i18n.t('library.untitledConversation'),
+    preview: latestAssistant?.content || latestUser?.content || i18n.t('library.continuePreview'),
     updatedAt: conversation.updatedAt,
   };
 }

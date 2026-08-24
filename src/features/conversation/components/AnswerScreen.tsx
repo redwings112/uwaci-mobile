@@ -20,10 +20,10 @@ import { selectActiveConversationId, selectConversationMessages } from '../state
 import { AssistantMessage } from './AssistantMessage';
 import { ConversationComposer } from './ConversationComposer';
 
-const followUps: readonly { label: string; icon: AppIconName }[] = [
-  { label: 'Business ideas with a small budget', icon: 'lightbulb' },
-  { label: 'How should I set my prices?', icon: 'activity' },
-  { label: 'Strategies to find customers', icon: 'profile' },
+const followUps: readonly { key: string; icon: AppIconName }[] = [
+  { key: 'suggestions.business', icon: 'lightbulb' },
+  { key: 'suggestions.pricing', icon: 'activity' },
+  { key: 'suggestions.customers', icon: 'profile' },
 ];
 
 export function AnswerScreen() {
@@ -106,16 +106,16 @@ export function AnswerScreen() {
           >
             {followUps.map((followUp) => (
               <Pressable
-                key={followUp.label}
+                key={followUp.key}
                 accessibilityRole="button"
-                accessibilityLabel={followUp.label}
+                accessibilityLabel={t(followUp.key)}
                 className="min-h-10 w-44 flex-row items-center gap-2 rounded-control border border-border bg-surface px-3 py-2"
-                onPress={() => askFollowUp(followUp.label)}
+                onPress={() => askFollowUp(t(followUp.key))}
               >
                 <View className="h-6 w-6 items-center justify-center rounded-full bg-lavender">
                   <AppIcon color={colors.brand} name={followUp.icon} size={13} />
                 </View>
-                <Text className="flex-1 text-xs text-ink dark:text-white">{followUp.label}</Text>
+                <Text className="flex-1 text-xs text-ink dark:text-white">{t(followUp.key)}</Text>
               </Pressable>
             ))}
           </ScrollView>

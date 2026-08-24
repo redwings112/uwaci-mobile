@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 import { recordingUpdated, voiceFailed, voiceReset, voiceStatusChanged } from '../state/voiceSlice';
 import type { CompletedRecording } from '@/core/audio/audioTypes';
+import { i18n } from '@/localization';
 
 const recordingOptions = {
   ...RecordingPresets.HIGH_QUALITY,
@@ -63,10 +64,7 @@ export function useVoiceRecorder() {
       dispatch(voiceStatusChanged('requesting_permission'));
       const permission = await requestMicrophonePermission();
       if (permission !== 'granted')
-        throw new AppError(
-          'PERMISSION_DENIED',
-          'Microphone access is required to ask a voice question. You can still type your question.',
-        );
+        throw new AppError('PERMISSION_DENIED', i18n.t('errors.micPermission'));
       await startAudioRecording(recorder);
       if (mounted.current && currentSession === session.current)
         dispatch(voiceStatusChanged('recording'));
@@ -75,7 +73,7 @@ export function useVoiceRecorder() {
       await cancelAudioRecording(recorder).catch(() => undefined);
       if (mounted.current && currentSession === session.current)
         dispatch(
-          voiceFailed(error instanceof Error ? error.message : 'The microphone could not start.'),
+          voiceFailed(error instanceof Error ? error.message : i18n.t('errors.micStartFailed')),
         );
       return false;
     } finally {
@@ -101,9 +99,7 @@ export function useVoiceRecorder() {
         !isReleasedAudioRecorderError(error)
       )
         dispatch(
-          voiceFailed(
-            error instanceof Error ? error.message : 'The recording could not be completed.',
-          ),
+          voiceFailed(error instanceof Error ? error.message : i18n.t('errors.recordingFailed')),
         );
       return null;
     } finally {
@@ -120,9 +116,7 @@ export function useVoiceRecorder() {
     } catch (error: unknown) {
       if (mounted.current && !isReleasedAudioRecorderError(error))
         dispatch(
-          voiceFailed(
-            error instanceof Error ? error.message : 'The recording could not be cancelled.',
-          ),
+          voiceFailed(error instanceof Error ? error.message : i18n.t('errors.recordingCancel')),
         );
     } finally {
       operationInProgress.current = false;

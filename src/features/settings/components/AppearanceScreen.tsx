@@ -68,7 +68,7 @@ export function AppearanceScreen() {
       <AppHeader
         back
         onBack={() => router.back()}
-        actionLabel="Appearance help"
+        actionLabel={t('a11y.appearanceHelp')}
         actionIcon="help"
       />
       <ScrollView

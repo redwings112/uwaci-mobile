@@ -7,6 +7,7 @@ import { AppIcon } from '@/shared/components/AppIcon/AppIcon';
 import { colors } from '@/theme/tokens';
 
 import type { ConversationMessage } from '../types';
+import { useTranslation } from 'react-i18next';
 
 export function MessageBubble({
   message,
@@ -15,6 +16,7 @@ export function MessageBubble({
   message: ConversationMessage;
   audioUri?: string;
 }) {
+  const { t } = useTranslation();
   const user = message.role === 'user';
   const [playing, setPlaying] = useState(false);
   const stopPlayback = useRef<(() => void) | null>(null);
@@ -42,7 +44,7 @@ export function MessageBubble({
   return (
     <View
       className={`mb-3 max-w-[88%] rounded-control px-4 py-3 ${user ? 'self-end bg-lavender' : 'self-start border border-border bg-surface'}`}
-      accessibilityLabel={`${user ? 'You said' : 'Uwaci answered'}: ${message.content}`}
+      accessibilityLabel={`${user ? t('a11y.youSaid') : t('a11y.assistantAnswered')}: ${message.content}`}
     >
       {user ? (
         <Text className="mb-1 text-xs font-medium text-muted">
@@ -63,7 +65,7 @@ export function MessageBubble({
         audioUri ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={playing ? 'Stop your recording' : 'Play your recording'}
+            accessibilityLabel={playing ? t('a11y.stopYourRecording') : t('a11y.playYourRecording')}
             className="mt-2 h-10 w-10 items-center justify-center self-end rounded-full bg-brand"
             onPress={togglePlayback}
           >

@@ -19,8 +19,7 @@ export async function startAudioRecording(recorder: ManagedAudioRecorder): Promi
   if (!status.canRecord) await recorder.prepareToRecordAsync();
   status = recorder.getStatus();
   if (status.isRecording) return;
-  if (!status.canRecord)
-    throw new AppError('INVALID_AUDIO', 'The microphone is not ready. Please try again.');
+  if (!status.canRecord) throw new AppError('INVALID_AUDIO', i18n.t('errors.micNotReady'));
   recorder.record({ forDuration: MAX_RECORDING_SECONDS });
 }
 

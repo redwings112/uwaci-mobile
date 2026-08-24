@@ -10,6 +10,7 @@ import type { ApiQueryResult } from '@/features/conversation/api/contracts';
 
 import type { VoiceQueryInput, VoiceThinkingStage } from '../types';
 import { executeVoiceUpload, parseVoiceResponseBody } from './voiceUpload';
+import { i18n } from '@/localization';
 
 export interface VoiceStreamCallbacks {
   onStage?: (event: {
@@ -54,7 +55,7 @@ async function createForm(input: VoiceQueryInput): Promise<FormData> {
     form.append('audio', await source.blob(), upload.fileName);
   } else {
     const file = new File(input.uri);
-    if (!file.exists || file.size <= 0) throw new Error('The recording is empty.');
+    if (!file.exists || file.size <= 0) throw new Error(i18n.t('errors.recordingEmpty'));
     form.append('audio', file, upload.fileName);
   }
   form.append('preferred_language', input.preferredLanguage);
@@ -129,6 +130,6 @@ export async function executeVoiceStream(
     if (done) break;
   }
   if (pending.trim()) handleLine(pending);
-  if (!completed) throw new Error('The streamed response ended before completion.');
+  if (!completed) throw new Error(i18n.t('errors.streamIncomplete'));
   return completed;
 }

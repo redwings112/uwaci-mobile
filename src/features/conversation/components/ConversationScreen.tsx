@@ -65,10 +65,10 @@ interface ConversationScreenProps {
   focusComposer?: boolean;
 }
 
-const suggestions: readonly { label: string; icon: AppIconName }[] = [
-  { label: 'Business ideas with a small budget', icon: 'lightbulb' },
-  { label: 'How should I set my prices?', icon: 'activity' },
-  { label: 'Strategies to find customers', icon: 'profile' },
+const suggestions: readonly { key: string; icon: AppIconName }[] = [
+  { key: 'suggestions.business', icon: 'lightbulb' },
+  { key: 'suggestions.pricing', icon: 'activity' },
+  { key: 'suggestions.customers', icon: 'profile' },
 ];
 
 function isDraftConversation(value: string): boolean {
@@ -183,9 +183,7 @@ export function ConversationScreen({
             onStopped: () => dispatch(voiceStatusChanged('idle')),
             onUnavailable: () => {
               if (!mounted.current) return;
-              setSpeechNotice(
-                'No matching device voice is installed. The answer remains available as text.',
-              );
+              setSpeechNotice(t('conversation.speechVoiceMissing'));
               dispatch(voiceStatusChanged('idle'));
             },
             onError: () => {
@@ -449,7 +447,7 @@ export function ConversationScreen({
             </View>
           </Pressable>
           <Pressable
-            accessibilityLabel="Start new chat"
+            accessibilityLabel={t('a11y.newChat')}
             className="min-h-9 items-center justify-center rounded-full border border-border bg-surface px-3"
             onPress={startNewConversation}
           >
@@ -538,7 +536,7 @@ export function ConversationScreen({
             />
             <Text className="mt-1 text-xs text-muted">{t('conversation.stopHint')}</Text>
             <Pressable
-              accessibilityLabel="Cancel voice recording"
+              accessibilityLabel={t('a11y.cancelRecording')}
               className="mt-1 min-h-9 items-center justify-center px-4"
               onPress={() => void cancelVoiceRecording()}
             >
@@ -576,18 +574,18 @@ export function ConversationScreen({
             >
               {suggestions.map((suggestion) => (
                 <Pressable
-                  key={suggestion.label}
+                  key={suggestion.key}
                   accessibilityRole="button"
-                  accessibilityLabel={suggestion.label}
+                  accessibilityLabel={t(suggestion.key)}
                   className="min-h-10 w-44 flex-row items-center gap-2 rounded-control border border-border bg-surface px-3 py-2"
                   disabled={busy}
-                  onPress={() => void sendText(suggestion.label)}
+                  onPress={() => void sendText(t(suggestion.key))}
                 >
                   <View className="h-6 w-6 items-center justify-center rounded-full bg-lavender">
                     <AppIcon color={colors.brand} name={suggestion.icon} size={13} />
                   </View>
                   <Text className="flex-1 text-xs text-ink dark:text-white">
-                    {suggestion.label}
+                    {t(suggestion.key)}
                   </Text>
                 </Pressable>
               ))}

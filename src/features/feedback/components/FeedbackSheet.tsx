@@ -34,7 +34,7 @@ export function FeedbackSheet({
       <Pressable
         className="flex-1 justify-end bg-black/40"
         onPress={onClose}
-        accessibilityLabel="Close feedback"
+        accessibilityLabel={t('a11y.closeFeedback')}
       >
         <Pressable
           className="gap-3 rounded-t-card bg-surface p-6 pb-10"

@@ -54,7 +54,7 @@ export function MessageActionsSheet({
       <Pressable
         className="flex-1 justify-end bg-black/40"
         onPress={onClose}
-        accessibilityLabel="Close answer actions"
+        accessibilityLabel={t('a11y.closeActions')}
       >
         <Pressable
           className="gap-1 rounded-t-card bg-surface p-6 pb-10 dark:bg-[#1B1933]"
@@ -74,7 +74,7 @@ export function MessageActionsSheet({
           <View className="mt-3">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close answer actions"
+              accessibilityLabel={t('a11y.closeActions')}
               className="min-h-12 items-center justify-center rounded-full border border-border"
               onPress={onClose}
             >

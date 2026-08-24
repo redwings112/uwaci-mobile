@@ -28,7 +28,7 @@ export function SpeechControlBar() {
       </View>
       {Platform.OS !== 'android' ? (
         <Pressable
-          accessibilityLabel={paused ? 'Resume spoken answer' : 'Pause spoken answer'}
+          accessibilityLabel={paused ? t('a11y.resumeSpoken') : t('a11y.pauseSpoken')}
           accessibilityRole="button"
           className="h-11 w-11 items-center justify-center rounded-full"
           onPress={() => void (paused ? speechService.resume() : speechService.pause())}
@@ -37,7 +37,7 @@ export function SpeechControlBar() {
         </Pressable>
       ) : null}
       <Pressable
-        accessibilityLabel="Stop spoken answer"
+        accessibilityLabel={t('a11y.stopSpoken')}
         accessibilityRole="button"
         className="h-11 w-11 items-center justify-center rounded-full bg-danger"
         onPress={() => void speechService.stop()}

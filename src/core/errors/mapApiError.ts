@@ -40,8 +40,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function mapApiError(value: unknown): AppError {
   if (value instanceof AppError) return value;
-  if (!isRecord(value))
-    return new AppError('UNKNOWN_ERROR', 'Something went wrong. Please try again.');
+  if (!isRecord(value)) return new AppError('UNKNOWN_ERROR', i18n.t('errors.UNKNOWN_FALLBACK'));
 
   if (value.status === 'TIMEOUT_ERROR') {
     return new AppError(
@@ -88,7 +87,7 @@ export function mapApiError(value: unknown): AppError {
 
   return new AppError(
     code,
-    userMessage(code) ?? 'Uwaci could not complete that request.',
+    userMessage(code) ?? i18n.t('errors.GENERIC_REQUEST'),
     retryable,
     requestId,
     details,

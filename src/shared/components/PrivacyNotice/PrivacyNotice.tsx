@@ -10,8 +10,8 @@ export function PrivacyNotice({ onPress }: { onPress: () => void }) {
     <Pressable
       testID="privacy-notice"
       accessibilityRole="button"
-      accessibilityLabel="Your data is private. Uwaci protects your conversations."
-      accessibilityHint="Opens the privacy detail"
+      accessibilityLabel={t('a11y.privacyNotice')}
+      accessibilityHint={t('a11y.privacyHint')}
       className="flex-row items-center rounded-card border border-border bg-surface px-4 py-3 dark:border-white/10 dark:bg-white/5"
       onPress={onPress}
     >
